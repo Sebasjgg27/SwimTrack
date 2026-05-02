@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Pool, Mail, Lock, ArrowRight } from "lucide-react";
+import { Waves, Mail, Lock, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,10 +14,15 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login - in real app, this would call Supabase Auth
+    // Simulate login - check if profile exists
     setTimeout(() => {
       setIsLoading(false);
-      window.location.href = "/dashboard";
+      const profile = localStorage.getItem("swimtrack_swimmer_profile");
+      if (profile) {
+        window.location.href = "/dashboard";
+      } else {
+        window.location.href = "/onboarding";
+      }
     }, 1000);
   };
 
@@ -26,7 +31,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Pool className="w-10 h-10 text-primary" />
+            <Waves className="w-10 h-10 text-primary" />
             <span className="text-3xl font-bold text-white">SwimTrack</span>
           </Link>
           <p className="text-slate-400 mt-2">Sign in to your account</p>
@@ -92,7 +97,7 @@ export default function LoginPage() {
             <p className="text-slate-400">
               Don&apos;t have an account?{" "}
               <Link href="/register" className="text-primary hover:underline font-medium">
-                Create one
+                Sign up
               </Link>
             </p>
           </div>

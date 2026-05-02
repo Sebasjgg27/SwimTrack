@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatPace, calculateZones, calculateCSS } from "@/lib/utils";
-import { Pool } from "lucide-react";
+import { Waves } from "lucide-react";
 
 interface PaceCardProps {
   t400?: number;
@@ -46,7 +46,7 @@ export function PaceCard({ t400, t200, poolType }: PaceCardProps) {
       <CardContent>
         {!hasData ? (
           <div className="text-center py-8 text-slate-500">
-            <Pool className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+            <Waves className="w-12 h-12 mx-auto mb-3 text-slate-300" />
             <p>Enter time trial results to calculate your training zones</p>
           </div>
         ) : (

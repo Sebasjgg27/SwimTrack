@@ -9,14 +9,16 @@ import {
   Trophy, 
   Upload, 
   Settings,
-  Pool,
+  Waves,
   LogOut,
-  ChevronLeft
+  ChevronLeft,
+  Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/time-trials", label: "Time Trials", icon: Clock },
   { href: "/dashboard/swimmers", label: "Swimmers", icon: Users },
   { href: "/dashboard/meets", label: "Meets", icon: Calendar },
   { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
@@ -36,7 +38,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <aside className="fixed left-0 top-0 h-full w-64 bg-slate-900 text-white flex flex-col">
         <div className="p-4 border-b border-slate-800">
           <Link href="/" className="flex items-center gap-2">
-            <Pool className="w-8 h-8 text-primary" />
+            <Waves className="w-8 h-8 text-primary" />
             <span className="text-xl font-bold">SwimTrack</span>
           </Link>
         </div>

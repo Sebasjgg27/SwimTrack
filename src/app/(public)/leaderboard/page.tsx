@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { formatTime } from "@/lib/utils";
-import { Pool, ChevronDown, Filter, Globe } from "lucide-react";
+import { Waves, ChevronDown, Filter, Globe } from "lucide-react";
 
 const mockLeaderboard = [
   { rank: 1, name: "Juan Perez", age: 16, club: "Club Alpha", country: "Colombia", time: 52340, event: "100m Freestyle", pool: "SCM", date: "2026-04-15", points: 856 },
@@ -31,7 +31,7 @@ export default function PublicLeaderboardPage() {
       <header className="border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Pool className="w-8 h-8 text-primary" />
+            <Waves className="w-8 h-8 text-primary" />
             <span className="text-2xl font-bold text-white">SwimTrack</span>
           </Link>
           <Link href="/login" className="text-slate-300 hover:text-white transition-colors">

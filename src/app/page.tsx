@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Trophy, Users, Calendar, Clock, ChevronRight, Pool } from "lucide-react";
+import { Trophy, Users, Calendar, Clock, ChevronRight, Waves } from "lucide-react";
 
 export default function Home() {
   return (
@@ -7,7 +7,7 @@ export default function Home() {
       <header className="border-b border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Pool className="w-8 h-8 text-primary" />
+            <Waves className="w-8 h-8 text-primary" />
             <span className="text-2xl font-bold text-white">SwimTrack</span>
           </div>
           <nav className="flex items-center gap-4">
@@ -82,10 +82,10 @@ export default function Home() {
                 </ul>
               </div>
               <div className="flex gap-4 justify-center">
-                <Link href="/login" className="btn-primary text-lg px-8 py-3">
+                <Link href="/register" className="btn-primary text-lg px-8 py-3">
                   Get Started
                 </Link>
-                <Link href="/leaderboard" className="btn-secondary text-lg px-8 py-3">
+                <Link href="/demo/profile" className="btn-secondary text-lg px-8 py-3">
                   View Demo
                 </Link>
               </div>
