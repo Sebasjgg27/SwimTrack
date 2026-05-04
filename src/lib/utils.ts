@@ -41,9 +41,8 @@ export function parseTime(timeStr: string): number {
 export function calculateCSS(t400ms: number, t200ms: number): number {
   if (t400ms <= t200ms) return 0;
   const diff = t400ms - t200ms;
-  if (diff === 0) return 0;
-  const cssMetersPerSec = 200 / (diff / 1000);
-  return 100 / cssMetersPerSec;
+  const cssSecPer100 = (200 / (diff / 1000)) * 100 / 200;
+  return 200 / (diff / 1000);
 }
 
 export interface ZonePaces {

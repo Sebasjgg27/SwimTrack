@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { createClient } from "@/lib/supabase";
 import { Plus, Search, Filter, MoreVertical, Clock } from "lucide-react";
 
 const mockSwimmers = [
@@ -18,11 +19,56 @@ const mockSwimmers = [
   { id: "6", name: "Sofia Hernandez", age: 13, gender: "female", events: 4, pbCount: 1, lastTraining: "4 days ago" },
 ];
 
+interface Swimmer {
+  id: string;
+  name: string;
+  age: number;
+  gender: string;
+  events: number;
+  pbCount: number;
+  lastTraining: string;
+}
+
 export default function SwimmersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
+  const [swimmers, setSwimmers] = useState<Swimmer[]>(mockSwimmers);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredSwimmers = mockSwimmers.filter((swimmer) => {
+  useEffect(() => {
+    async function fetchSwimmers() {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("swimmers")
+          .select("*")
+          .order("name");
+        
+        if (error) {
+          console.warn("Supabase not configured, using mock data:", error.message);
+          setSwimmers(mockSwimmers);
+        } else if (data) {
+          setSwimmers(data.map((s: { id: string; first_name: string; last_name: string; date_of_birth: string; gender: string }) => ({
+            id: s.id,
+            name: `${s.first_name} ${s.last_name}`,
+            age: new Date().getFullYear() - new Date(s.date_of_birth).getFullYear(),
+            gender: s.gender,
+            events: 0,
+            pbCount: 0,
+            lastTraining: "N/A",
+          })));
+        }
+      } catch (err) {
+        console.warn("Error connecting to Supabase, using mock data");
+        setSwimmers(mockSwimmers);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchSwimmers();
+  }, []);
+
+  const filteredSwimmers = swimmers.filter((swimmer) => {
     const matchesSearch = swimmer.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGender = genderFilter === "all" || swimmer.gender === genderFilter;
     return matchesSearch && matchesGender;
@@ -67,13 +113,23 @@ export default function SwimmersPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredSwimmers.map((swimmer) => (
-          <SwimmerCard key={swimmer.id} swimmer={swimmer} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <div className="h-24 bg-slate-100 rounded" />
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredSwimmers.map((swimmer) => (
+            <SwimmerCard key={swimmer.id} swimmer={swimmer} />
+          ))}
+        </div>
+      )}
 
-      {filteredSwimmers.length === 0 && (
+      {filteredSwimmers.length === 0 && !isLoading && (
         <Card className="text-center py-12">
           <p className="text-slate-500">No swimmers found matching your criteria</p>
         </Card>
@@ -82,7 +138,7 @@ export default function SwimmersPage() {
   );
 }
 
-function SwimmerCard({ swimmer }: { swimmer: typeof mockSwimmers[0] }) {
+function SwimmerCard({ swimmer }: { swimmer: Swimmer }) {
   return (
     <Card className="hover:shadow-md transition-shadow cursor-pointer">
       <div className="flex items-start justify-between">

@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { formatTime } from "@/lib/utils";
+import { formatTime, cn } from "@/lib/utils";
 import { Globe, MapPin, Building2, Award, Filter, ChevronDown } from "lucide-react";
 
 const mockLeaderboard = [
@@ -183,8 +183,4 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
       {children}
     </button>
   );
-}
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
 }

@@ -25,6 +25,15 @@ const levelColors: Record<string, string> = {
 
 export default function MeetsPage() {
   const [filter, setFilter] = useState("all");
+  const today = new Date();
+
+  const filteredMeets = mockMeets.filter((meet) => {
+    const meetDate = new Date(meet.date);
+    if (filter === "upcoming") return meetDate > today;
+    if (filter === "past") return meetDate <= today;
+    if (filter === "results") return meet.results > 0;
+    return true;
+  });
 
   return (
     <DashboardLayout>
@@ -56,7 +65,7 @@ export default function MeetsPage() {
       </div>
 
       <div className="space-y-4">
-        {mockMeets.map((meet) => (
+        {filteredMeets.map((meet) => (
           <MeetCard key={meet.id} meet={meet} />
         ))}
       </div>

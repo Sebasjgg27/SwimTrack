@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { PaceCard } from "@/components/swimmer/pace-card";
-import { formatTime } from "@/lib/utils";
+import { formatTime, parseTime, calculateCSS, calculateZones } from "@/lib/utils";
 import { User, Calendar, MapPin, Clock, Trophy, TrendingUp, Edit, Download } from "lucide-react";
 
 const mockSwimmer = {
@@ -24,24 +25,42 @@ const mockSwimmer = {
 };
 
 const mockPBs = [
-  { event: "50m Freestyle", pool: "SCM", time: "23.45", date: "2026-03-20", points: 845 },
-  { event: "100m Freestyle", pool: "SCM", time: "52.34", date: "2026-04-15", points: 856 },
-  { event: "200m Freestyle", pool: "SCM", time: "1:54.23", date: "2026-04-10", points: 823 },
-  { event: "400m Freestyle", pool: "SCM", time: "4:02.15", date: "2026-03-25", points: 798 },
-  { event: "100m Backstroke", pool: "SCM", time: "1:02.45", date: "2026-04-05", points: 712 },
-  { event: "200m IM", pool: "SCM", time: "2:15.67", date: "2026-04-12", points: 789 },
+  { event: "50m Freestyle", pool: "SCM", time: 23450, date: "2026-03-20", points: 845 },
+  { event: "100m Freestyle", pool: "SCM", time: 52340, date: "2026-04-15", points: 856 },
+  { event: "200m Freestyle", pool: "SCM", time: 114230, date: "2026-04-10", points: 823 },
+  { event: "400m Freestyle", pool: "SCM", time: 242150, date: "2026-03-25", points: 798 },
+  { event: "100m Backstroke", pool: "SCM", time: 62450, date: "2026-04-05", points: 712 },
+  { event: "200m IM", pool: "SCM", time: 135670, date: "2026-04-12", points: 789 },
 ];
 
 const mockProgression = [
-  { date: "2025-01", time: "55.12" },
-  { date: "2025-03", time: "54.34" },
-  { date: "2025-06", time: "53.45" },
-  { date: "2025-09", time: "53.12" },
-  { date: "2026-01", time: "52.89" },
-  { date: "2026-04", time: "52.34" },
+  { date: "2025-01", time: 55120 },
+  { date: "2025-03", time: 54340 },
+  { date: "2025-06", time: 53450 },
+  { date: "2025-09", time: 53120 },
+  { date: "2026-01", time: 52890 },
+  { date: "2026-04", time: 52340 },
 ];
 
 export default function SwimmerProfilePage({ params }: { params: { id: string } }) {
+  const [t400, setT400] = useState("4:32.15");
+  const [t200, setT200] = useState("2:08.45");
+  const [zones, setZones] = useState<ReturnType<typeof calculateZones> | null>(null);
+
+  const handleCalculateZones = () => {
+    const t400ms = parseTime(t400);
+    const t200ms = parseTime(t200);
+    const css = calculateCSS(t400ms, t200ms);
+    if (css > 0) {
+      setZones(calculateZones(css));
+    }
+  };
+
+  const times = mockProgression.map(p => p.time);
+  const maxTime = Math.max(...times);
+  const minTime = Math.min(...times);
+  const range = maxTime - minTime || 1;
+
   return (
     <DashboardLayout>
       <div className="flex items-start justify-between mb-8">
@@ -98,7 +117,7 @@ export default function SwimmerProfilePage({ params }: { params: { id: string } 
                     <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
                       <td className="px-4 py-3 font-medium text-slate-900">{pb.event}</td>
                       <td className="px-4 py-3 text-slate-600">{pb.pool}</td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{pb.time}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatTime(pb.time)}</td>
                       <td className="px-4 py-3 text-right text-primary font-medium">{pb.points}</td>
                       <td className="px-4 py-3 text-right text-slate-500 text-sm">{pb.date}</td>
                     </tr>
@@ -118,20 +137,22 @@ export default function SwimmerProfilePage({ params }: { params: { id: string } 
               <div className="grid grid-cols-2 gap-4">
                 <Input
                   label="400m Time (mm:ss.xx)"
-                  defaultValue="4:32.15"
+                  value={t400}
+                  onChange={(e) => setT400(e.target.value)}
                   placeholder="4:32.15"
                 />
                 <Input
                   label="200m Time (mm:ss.xx)"
-                  defaultValue="2:08.45"
+                  value={t200}
+                  onChange={(e) => setT200(e.target.value)}
                   placeholder="2:08.45"
                 />
               </div>
-              <Button className="w-full">Calculate Zones</Button>
+              <Button className="w-full" onClick={handleCalculateZones}>Calculate Zones</Button>
             </CardContent>
           </Card>
 
-          <PaceCard t400={272150} t200={128450} poolType="SCM" />
+          <PaceCard t400={zones ? parseTime(t400) : 272150} t200={zones ? parseTime(t200) : 128450} poolType="SCM" />
         </div>
       </div>
 
@@ -145,16 +166,19 @@ export default function SwimmerProfilePage({ params }: { params: { id: string } 
         </CardHeader>
         <CardContent>
           <div className="h-64 flex items-end justify-between gap-2 px-4">
-            {mockProgression.map((point, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center">
-                <div 
-                  className="w-full bg-primary rounded-t"
-                  style={{ height: `${60 + (i * 7)}%` }}
-                />
-                <div className="mt-2 text-xs text-slate-500">{point.date}</div>
-                <div className="text-xs font-mono text-slate-700">{point.time}</div>
-              </div>
-            ))}
+            {mockProgression.map((point, i) => {
+              const height = 20 + ((maxTime - point.time) / range) * 70;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center">
+                  <div 
+                    className="w-full bg-primary rounded-t"
+                    style={{ height: `${height}%` }}
+                  />
+                  <div className="mt-2 text-xs text-slate-500">{point.date}</div>
+                  <div className="text-xs font-mono text-slate-700">{formatTime(point.time)}</div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

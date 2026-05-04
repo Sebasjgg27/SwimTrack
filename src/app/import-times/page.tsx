@@ -201,17 +201,17 @@ async function parseSpreadsheet(file: File): Promise<ParsedRow[]> {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet, { header: 1 });
+        const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][];
         
         if (json.length === 0) {
           resolve([]);
           return;
         }
 
-        const headers = json[0].map(String);
-        const rows = json.slice(1).map(row => {
+        const headers = json[0].map((cell: unknown) => String(cell));
+        const rows = json.slice(1).map((row: unknown[]) => {
           const obj: ParsedRow = {};
-          headers.forEach((header, i) => {
+          headers.forEach((header: string, i: number) => {
             obj[header] = String(row[i] ?? "");
           });
           return obj;

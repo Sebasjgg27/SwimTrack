@@ -103,6 +103,20 @@ export default function ImportPage() {
     }));
   }, []);
 
+  const handleSaveTemplate = useCallback(() => {
+    const templateName = prompt("Enter template name:");
+    if (!templateName) return;
+    const template = {
+      name: templateName,
+      format: state.format,
+      columnMapping: state.columnMapping,
+    };
+    const templates = JSON.parse(localStorage.getItem("import_templates") || "[]");
+    templates.push(template);
+    localStorage.setItem("import_templates", JSON.stringify(templates));
+    alert("Template saved!");
+  }, [state.format, state.columnMapping]);
+
   const handleImport = useCallback(() => {
     setState(prev => ({ ...prev, step: "complete" }));
   }, []);
@@ -225,7 +239,7 @@ export default function ImportPage() {
                 Back
               </Button>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex items-center gap-2">
+                <Button variant="outline" className="flex items-center gap-2" onClick={handleSaveTemplate}>
                   <Save className="w-4 h-4" />
                   Save Template
                 </Button>
@@ -259,8 +273,8 @@ export default function ImportPage() {
                 <tbody>
                   {state.rows.slice(0, 10).map((row, i) => (
                     <tr key={i} className="border-b border-slate-100">
-                      {Object.entries(state.columnMapping).filter(([_, f]) => f !== "skip").map(([_, field]) => (
-                        <td key={field} className="px-4 py-2">{row[field] || "-"}</td>
+                      {Object.entries(state.columnMapping).filter(([_, f]) => f !== "skip").map(([sourceHeader, targetField]) => (
+                        <td key={targetField} className="px-4 py-2">{row[sourceHeader] || "-"}</td>
                       ))}
                     </tr>
                   ))}
@@ -304,25 +318,25 @@ async function parseSpreadsheet(file: File): Promise<{ headers: string[]; rows: 
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet, { header: 1 });
+        const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][];
         
         if (json.length === 0) {
           resolve({ headers: [], rows: [] });
           return;
         }
 
-        const headers = json[0].map(String);
-        const rows = json.slice(1).map(row => {
+        const headers = json[0].map((cell: unknown) => String(cell));
+        const rows = json.slice(1).map((row: unknown[]) => {
           const obj: ParsedRow = {};
-          headers.forEach((header, i) => {
+          headers.forEach((header: string, i: number) => {
             obj[header] = String(row[i] ?? "");
           });
           return obj;
         });
 
         resolve({ headers, rows });
-      } catch (error) {
-        reject(error);
+      } catch (_error) {
+        reject(_error);
       }
     };
     reader.onerror = reject;

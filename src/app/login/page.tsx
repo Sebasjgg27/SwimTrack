@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Waves, Mail, Lock, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -14,14 +16,13 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login - check if profile exists
     setTimeout(() => {
       setIsLoading(false);
       const profile = localStorage.getItem("swimtrack_swimmer_profile");
       if (profile) {
-        window.location.href = "/dashboard";
+        router.push("/dashboard");
       } else {
-        window.location.href = "/onboarding";
+        router.push("/onboarding");
       }
     }, 1000);
   };
