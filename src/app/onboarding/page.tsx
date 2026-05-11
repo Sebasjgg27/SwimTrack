@@ -1,35 +1,100 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Waves, User, Calendar, MapPin, ChevronRight, CheckCircle } from "lucide-react";
+import { Waves, User, Calendar, MapPin, ChevronRight, CheckCircle, AlertCircle } from "lucide-react";
+import { createSwimmer, getOrCreateClub, getCurrentUser } from "@/lib/auth";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [isComplete, setIsComplete] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     dateOfBirth: "",
-    gender: "",
+    gender: "" as "male" | "female" | "",
     city: "",
     country: "CO",
     club: "",
     poolType: "SCM",
   });
-  const [isComplete, setIsComplete] = useState(false);
+
+  useEffect(() => {
+    async function loadUser() {
+      const { user: currentUser } = await getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+        if (currentUser.user_metadata?.first_name) {
+          setFormData((prev) => ({
+            ...prev,
+            firstName: currentUser.user_metadata.first_name || "",
+            lastName: currentUser.user_metadata.last_name || "",
+          }));
+        }
+      }
+    }
+    loadUser();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError("");
   };
 
-  const handleNext = () => {
+  const calculateIsMinor = (dob: string): boolean => {
+    if (!dob) return false;
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age < 18;
+  };
+
+  const handleNext = async () => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Save swimmer profile
-      localStorage.setItem("swimtrack_swimmer_profile", JSON.stringify(formData));
+      setIsLoading(true);
+      setError("");
+
+      if (!user) {
+        setError("You must be logged in to complete onboarding");
+        setIsLoading(false);
+        return;
+      }
+
+      const { club, error: clubError } = await getOrCreateClub(formData.club, formData.country);
+
+      if (clubError) {
+        setError("Failed to create/join club. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: swimmerData, error: swimmerError } = await createSwimmer(
+        user.id,
+        formData.firstName,
+        formData.lastName,
+        club?.id || null,
+        formData.gender || null,
+        formData.dateOfBirth || null,
+        calculateIsMinor(formData.dateOfBirth)
+      );
+
+      if (swimmerError) {
+        setError(`Failed to create swimmer profile: ${swimmerError}`);
+        setIsLoading(false);
+        return;
+      }
+
       setIsComplete(true);
       setTimeout(() => {
         router.push("/dashboard");
@@ -67,7 +132,6 @@ export default function OnboardingPage() {
           <h1 className="text-2xl font-bold text-white mt-6">Create Your Swimmer Profile</h1>
           <p className="text-slate-400 mt-2">Step {step} of 3</p>
           
-          {/* Progress dots */}
           <div className="flex justify-center gap-2 mt-4">
             {[1, 2, 3].map((s) => (
               <div
@@ -81,6 +145,13 @@ export default function OnboardingPage() {
         </div>
 
         <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-8">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-center gap-2 mb-6">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <span className="text-red-400 text-sm">{error}</span>
+            </div>
+          )}
+
           {step === 1 && (
             <div className="space-y-5">
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -244,18 +315,18 @@ export default function OnboardingPage() {
             )}
             <button
               onClick={handleNext}
-              disabled={!canProceed()}
+              disabled={!canProceed() || isLoading}
               className="flex-1 flex items-center justify-center gap-2 bg-primary text-white py-3 px-6 rounded-lg font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
             >
-              {step === 3 ? "Complete Profile" : "Continue"}
-              <ChevronRight className="w-4 h-4" />
+              {isLoading ? "Saving..." : step === 3 ? "Complete Profile" : "Continue"}
+              {!isLoading && <ChevronRight className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
         <div className="mt-6 text-center">
           <Link href="/dashboard" className="text-slate-500 text-sm hover:text-slate-300">
-            Skip for now →
+            Skip for now
           </Link>
         </div>
       </div>
