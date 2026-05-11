@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Waves, Mail, Lock, User, ArrowRight, ArrowLeft } from "lucide-react";
+import { Waves, Mail, Lock, User, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react";
+import { signUp, createProfile } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -41,19 +43,36 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
-    
-    // Simulate registration - in real app, this would call Supabase Auth
-    setTimeout(() => {
+    setError("");
+
+    const { data, error: signUpError } = await signUp({
+      email: formData.email,
+      password: formData.password,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+    });
+
+    if (signUpError) {
+      setError(signUpError);
       setIsLoading(false);
-      // Store user data in localStorage for demo purposes
-      localStorage.setItem("swimtrack_user", JSON.stringify({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-      }));
-      // Redirect to import times page (optional step)
-      router.push("/import-times");
-    }, 1000);
+      return;
+    }
+
+    if (data?.user) {
+      const { error: profileError } = await createProfile(
+        data.user.id,
+        formData.firstName,
+        formData.lastName
+      );
+
+      if (profileError) {
+        setError("Account created but profile setup failed. Please complete your profile later.");
+        setTimeout(() => router.push("/onboarding"), 2000);
+        return;
+      }
+    }
+
+    router.push("/onboarding");
   };
 
   return (
@@ -69,6 +88,13 @@ export default function RegisterPage() {
 
         <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <span className="text-red-400 text-sm">{error}</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -133,7 +159,7 @@ export default function RegisterPage() {
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                  placeholder="••••••••"
+                  placeholder="Min 6 characters"
                   required
                   minLength={6}
                 />
@@ -152,26 +178,20 @@ export default function RegisterPage() {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                  placeholder="••••••••"
+                  placeholder="Confirm password"
                   required
                 />
               </div>
             </div>
 
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm">
-                {error}
-              </div>
-            )}
-
-            <button
+            <Button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-dark transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2"
             >
               {isLoading ? "Creating Account..." : "Create Account"}
               {!isLoading && <ArrowRight className="w-4 h-4" />}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-6 pt-6 border-t border-slate-700 text-center">

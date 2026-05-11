@@ -1,30 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Waves, Mail, Lock, ArrowRight } from "lucide-react";
+import { Waves, Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
+import { signIn } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get("redirect") || "/dashboard";
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    setError("");
+
+    const { data, error: authError } = await signIn({ email, password });
+
+    if (authError) {
+      setError(authError);
       setIsLoading(false);
-      const profile = localStorage.getItem("swimtrack_swimmer_profile");
-      if (profile) {
-        router.push("/dashboard");
-      } else {
-        router.push("/onboarding");
-      }
-    }, 1000);
+      return;
+    }
+
+    if (data?.user) {
+      router.push(redirectPath);
+    }
   };
 
   return (
@@ -40,6 +49,13 @@ export default function LoginPage() {
 
         <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <span className="text-red-400 text-sm">{error}</span>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
                 Email Address
@@ -68,17 +84,13 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   required
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="w-4 h-4 rounded bg-slate-700 border-slate-600" />
-                <span className="text-sm text-slate-300">Remember me</span>
-              </label>
+            <div className="flex items-center justify-end">
               <Link href="/forgot-password" className="text-sm text-primary hover:underline">
                 Forgot password?
               </Link>
@@ -106,7 +118,7 @@ export default function LoginPage() {
 
         <div className="mt-8 text-center">
           <p className="text-slate-500 text-sm">
-            <Link href="/" className="hover:text-slate-300">← Back to home</Link>
+            <Link href="/" className="hover:text-slate-300">Back to home</Link>
           </p>
         </div>
       </div>
