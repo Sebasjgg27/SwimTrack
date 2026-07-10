@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,10 +85,12 @@ export default function SwimmerProfilePage({ params }: { params: { id: string } 
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Edit className="w-4 h-4" />
-            Edit
-          </Button>
+          <Link href={`/dashboard/swimmers/${params.id}/edit`}>
+            <Button variant="outline" className="flex items-center gap-2">
+              <Edit className="w-4 h-4" />
+              Edit
+            </Button>
+          </Link>
           <Button variant="outline" className="flex items-center gap-2">
             <Download className="w-4 h-4" />
             Export Card

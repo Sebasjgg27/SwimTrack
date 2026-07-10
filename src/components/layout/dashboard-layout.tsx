@@ -12,7 +12,8 @@ import {
   Waves,
   LogOut,
   ChevronLeft,
-  Clock
+  Clock,
+  Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/dashboard/meets", label: "Meets", icon: Calendar },
   { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/dashboard/import", label: "Import", icon: Upload },
+  { href: "/dashboard/clubs", label: "Clubs", icon: Building2 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
