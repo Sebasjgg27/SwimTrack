@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -164,15 +165,87 @@ export default function SwimmerProfilePage({ params }: { params: { id: string } 
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+</div>
+        <div className="flex gap-2">
+          <Link href={`/dashboard/swimmers/${params.id}/edit`}>
             <Button variant="outline" className="flex items-center gap-2">
               <Edit className="w-4 h-4" />
               Edit
             </Button>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Export Card
-            </Button>
+</Link>
+          <Button variant="outline" className="flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Export Card
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personal Bests</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600">Event</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-slate-600">Pool</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-slate-600">Time</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-slate-600">Pts</th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-slate-600">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mockPBs.map((pb, i) => (
+                    <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-900">{pb.event}</td>
+                      <td className="px-4 py-3 text-slate-600">{pb.pool}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-slate-900">{formatTime(pb.time)}</td>
+                      <td className="px-4 py-3 text-right text-primary font-medium">{pb.points}</td>
+                      <td className="px-4 py-3 text-right text-slate-500 text-sm">{pb.date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Time Trial Data</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="400m Time (mm:ss.xx)"
+                  value={t400}
+                  onChange={(e) => setT400(e.target.value)}
+                  placeholder="4:32.15"
+                />
+                <Input
+                  label="200m Time (mm:ss.xx)"
+                  value={t200}
+                  onChange={(e) => setT200(e.target.value)}
+                  placeholder="2:08.45"
+                />
+              </div>
+              <Button className="w-full" onClick={handleCalculateZones}>Calculate Zones</Button>
+            </CardContent>
+          </Card>
+
+          <PaceCard t400={zones ? parseTime(t400) : 272150} t200={zones ? parseTime(t200) : 128450} poolType="SCM" />
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>100m Freestyle Progression</CardTitle>
+            <p className="text-sm text-slate-500 mt-1">SCM • Last 12 months</p>
           </div>
         </div>
 

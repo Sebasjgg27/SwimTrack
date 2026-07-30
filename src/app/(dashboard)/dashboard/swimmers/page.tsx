@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -74,6 +74,13 @@ export default function SwimmersPage() {
             Add Swimmer
           </Button>
         </div>
+        <Link href="/dashboard/swimmers/add">
+          <Button className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Swimmer
+          </Button>
+        </Link>
+      </div>
 
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="relative flex-1">
