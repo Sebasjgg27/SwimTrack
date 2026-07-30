@@ -1,146 +1,115 @@
-# SwimTrack - Swimming Club Management Platform
+# SwimTrack
 
-A free-tier web application for swimming clubs to manage times, meets, training zones, and leaderboards.
+**Swimming club management platform** — track times, meets, training zones, and leaderboards.
+
+Built with Next.js 14 (App Router), Supabase, Tailwind CSS, and TypeScript.
 
 ## Features
 
-- **Time & Meet Management** - Log swimmer times by event, meet, and pool type
-- **Training Pace Auto-Calculator** - Generate pace cards from time trials (CSS-based zones)
-- **Geographic Leaderboard** - 4-level filtering (International → Country → State → Club)
-- **File Import** - Support for XLSX, CSV, TXT, MD, Lenex (.lxf), SDIF (.sd3), and manual entry
-- **Swimmer Profiles** - Personal bests, time progression charts, zone cards
-- **Multi-role Accounts** - Club Admin, Coach, Swimmer, Parent, Spectator
-- **World Aquatics Points** - Automatic points calculation
+- **Time & Meet Management** — Log swimmer results by event, meet, and pool type
+- **Training Pace Zones** — CSS-based pace calculator from 400m + 200m time trials
+- **Geographic Leaderboard** — Filter by International, Country, Region, or Club
+- **Excel Import** — Import times from Spanish-format Excel templates (Competencia/Entreno)
+- **Swimmer Profiles** — Personal bests, progression chart, pace cards
+- **Multi-role Auth** — Club Admin, Coach, Swimmer roles
+- **Dark / Poolside Light Mode** — Theme toggle on public pages
+- **HydroPulse Design** — Dark glassmorphism with Electric Cyan accents
+
+## Quick Start
+
+```bash
+npm install
+cp .env.example .env.local   # add your Supabase credentials
+npm run dev                   # → http://localhost:3000/register
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (admin operations) |
+
+## Project State
+
+Partially built MVP. The core flow works: sign up → create swimmer profile → add meets/results → view leaderboard → import Excel → calculate CSS zones.
+
+## What's Broken / Failing
+
+| Issue | Details |
+|-------|---------|
+| Dashboard color theming | Dashboard pages use hardcoded Tailwind `slate` colors instead of CSS variables — no poolside theme support in dashbaord |
+| Settings club save | API ignores `country_id` and `default_pool_type` fields from the settings form |
+| Onboarding bypasses API | Uses browser client `createSwimmer()` directly instead of `/api/swimmers` — bypasses RLS |
+| No password reset | Forgot-password route removed, no reset flow exists |
+| Time-trials silent fail | If the user has no swimmer profile, the load silently fails with "No swimmer profile found" |
+| Theme toggle limited | Only public pages have the Poolside/Dark toggle; dashboard has no theme toggle |
+| CSS `@layer` conflict | Tailwind's `font-mono` utility class now uses CSS variable but may conflict in edge cases |
+
+## What's Missing (vs SPEC.md)
+
+### API Routes Not Implemented
+- `GET /api/swimmers/[id]/pace-card`
+- `GET /api/swimmers/[id]/progression`
+- `GET /api/leaderboard/embed`
+- Auth API routes (all auth handled client-side via `src/lib/auth.ts`)
+
+### File Import Formats Not Implemented
+- CSV (comma/tab-delimited)
+- Lenex XML (.lxf / .lef)
+- SDIF Hy-Tek (.sd3)
+- Manual time entry form
+
+### Features Not Built
+- QR swimmer cards (for poolside check-in)
+- Club analytics dashboard (charts, stats)
+- Embed widget (public leaderboard embed)
+- Notification system (email alerts for PBs, meets)
+- World Aquatics points UI display (utility exists but unused in pages)
+- Profile visibility enforcement (no code checks `profile_visibility` or `is_minor`/`parent_consent`)
+- Parent and Spectator roles (schema exists, no UI)
+- Country / region management (schema exists, no API)
+- Pool type conversion UI (utility `convertTime()` exists but unused)
+
+### Quality & Testing
+- No test suite (unit, integration, or E2E)
+- No accessibility audit (WCAG 2.1 AA)
+- No error tracking (Sentry, etc.)
+- No CI pipeline for linting/testing
+- No Storybook or component documentation
+
+### UX Polish
+- No empty states for most pages (just "No data" text)
+- No toast notifications for success/error feedback
+- Mobile hamburger menu works but sidebar lacks animation polish
+- No SEO meta tags on dashboard pages
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14 (App Router) + Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: Supabase PostgreSQL
-- **Auth**: Supabase Auth
-- **Storage**: Supabase Storage
-- **Hosting**: Vercel (free tier)
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 14 (App Router) |
+| Styling | Tailwind CSS + CSS custom properties |
+| Database | Supabase PostgreSQL |
+| Auth | Supabase Auth |
+| Icons | Lucide React |
+| Charts | Recharts |
+| Spreadsheet | SheetJS (xlsx) |
+| Hosting | Vercel |
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Supabase account (free)
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd swimtrack
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Set up environment variables:
-```bash
-cp .env.example .env.local
-```
-
-4. Update `.env.local` with your Supabase credentials:
-```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
-
-5. Set up the database:
-   - Go to [Supabase](https://supabase.com) and create a new project
-   - Run the SQL in `supabase/schema.sql` in the Supabase SQL Editor
-
-6. Run the development server:
-```bash
-npm run dev
-```
-
-7. Open [http://localhost:3000](http://localhost:3000)
-
-## Project Structure
+## CSS Formula
 
 ```
-src/
-├── app/                 # Next.js App Router pages
-│   ├── (dashboard)/    # Authenticated dashboard pages
-│   ├── (public)/      # Public pages
-│   └── api/           # API routes
-├── components/        # React components
-│   ├── ui/           # UI primitives (Button, Card, etc.)
-│   ├── layout/       # Layout components
-│   ├── swimmer/      # Swimmer-specific components
-│   └── ...
-├── lib/              # Utility functions
-│   ├── supabase.ts   # Supabase client
-│   └── utils.ts      # General utilities (time formatting, CSS calculation)
-└── types/            # TypeScript type definitions
+CSS = (T400 - T200) / 2000       # sec/100m
+A1   = CSS + 20–30s              # Recovery
+A2   = CSS + 10–20s              # Endurance
+A3   = CSS ± 5s                  # Threshold
+VO2  = CSS – 5–10s               # VO2 Max
+TOL  = CSS – 10–15s              # Lactate Tolerance
+ALLOUT = CSS – 15s               # Sprint
 ```
-
-## Training Zone Calculation
-
-The app calculates training pace zones from time trials using the Critical Swim Speed (CSS) formula:
-
-```
-CSS = 200 / (T400 - T200)  // meters per second
-```
-
-Zone paces (relative to CSS):
-- **A1**: CSS + 20-30 sec (Recovery)
-- **A2**: CSS + 10-20 sec (Endurance)
-- **A3**: CSS ± 5 sec (Threshold)
-- **VO2**: CSS - 5-10 sec (VO2 Max)
-- **Tolerance**: CSS - 10-15 sec (Lactate Tolerance)
-- **All Out**: CSS - 15 sec (Sprint)
-
-## Pool Types
-
-The app supports three pool types with automatic conversion:
-- **SCM**: Short Course Meters (25m)
-- **LCM**: Long Course Meters (50m)
-- **SCY**: Short Course Yards (25y)
-
-## File Import Formats
-
-- **XLSX/CSV**: Excel and CSV files with column mapping
-- **Lenex**: World Aquatics XML format (.lxf, .lef)
-- **SDIF**: Hy-Tek format (.sd3)
-- **TXT/MD**: Delimited text or markdown tables
-
-## Monthly Development Timeline
-
-### Month 1
-- Authentication & roles system
-- Club/Swimmer/Meet data model
-- Manual time entry
-- Basic club-level leaderboard
-- Pace card calculator
-
-### Month 2
-- File import wizard (XLSX, CSV, Lenex, SDIF)
-- Geographic leaderboard (all 4 levels + filters)
-- Swimmer profiles with PB detection
-
-### Month 3
-- Time progression charts
-- World Aquatics points
-- QR swimmer cards
-- Club analytics dashboard
-- Embed widget
-- Notification system
-- Public launch
 
 ## License
 
 MIT
-
-## Support
-
-For issues and feature requests, please open an issue on the project repository.
