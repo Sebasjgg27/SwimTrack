@@ -5,24 +5,24 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export function Badge({ className, variant = "default", children, ...props }: BadgeProps) {
-  const variants = {
-    default: "bg-slate-100 text-slate-700",
-    success: "bg-green-100 text-green-700",
-    warning: "bg-yellow-100 text-yellow-700",
-    error: "bg-red-100 text-red-700",
-    info: "bg-blue-100 text-blue-700",
-    gold: "bg-yellow-100 text-yellow-700",
-    silver: "bg-slate-200 text-slate-700",
-    bronze: "bg-orange-100 text-orange-700",
+  const variantStyles: Record<string, React.CSSProperties> = {
+    default: { background: "var(--bg-card)", color: "var(--text-secondary)" },
+    success: { background: "rgba(16, 185, 129, 0.15)", color: "#34D399" },
+    warning: { background: "rgba(245, 158, 11, 0.15)", color: "#FBBF24" },
+    error: { background: "rgba(239, 68, 68, 0.15)", color: "#F87171" },
+    info: { background: "rgba(0, 229, 255, 0.15)", color: "var(--accent-color)" },
+    gold: { background: "rgba(255, 215, 0, 0.15)", color: "#FFD700" },
+    silver: { background: "rgba(192, 192, 192, 0.15)", color: "#C0C0C0" },
+    bronze: { background: "rgba(205, 127, 50, 0.15)", color: "#CD7F32" },
   };
 
   return (
     <span
       className={cn(
         "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-        variants[variant],
         className
       )}
+      style={variantStyles[variant]}
       {...props}
     >
       {children}

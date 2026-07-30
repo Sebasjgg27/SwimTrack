@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Plus, Calendar, MapPin, Users, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Plus, Calendar, MapPin, CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 
-const mockMeets = [
-  { id: "1", name: "Regional Championship 2026", date: "2026-04-20", city: "Bogotá", pool: "SCM", level: "regional", results: 156, verified: true },
-  { id: "2", name: "Club Invitational", date: "2026-04-15", city: "Medellín", pool: "LCM", level: "local", results: 89, verified: true },
-  { id: "3", name: "National Qualifier", date: "2026-05-10", city: "Cali", pool: "LCM", level: "national", results: 0, verified: false },
-  { id: "4", name: "Youth Championship", date: "2026-05-25", city: "Barranquilla", pool: "SCM", level: "regional", results: 0, verified: false },
-  { id: "5", name: "Club Time Trials", date: "2026-03-30", city: "Bogotá", pool: "SCM", level: "club", results: 45, verified: true },
-];
+interface Meet {
+  id: string;
+  name: string;
+  meet_date: string;
+  city: string | null;
+  pool_type: string;
+  level: string | null;
+  results_verified: boolean;
+}
 
 const levelColors: Record<string, string> = {
   club: "bg-slate-100 text-slate-700",
@@ -24,25 +26,50 @@ const levelColors: Record<string, string> = {
 };
 
 export default function MeetsPage() {
+  const router = useRouter();
   const [filter, setFilter] = useState("all");
-  const today = new Date();
+  const [meets, setMeets] = useState<Meet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredMeets = mockMeets.filter((meet) => {
-    const meetDate = new Date(meet.date);
-    if (filter === "upcoming") return meetDate > today;
-    if (filter === "past") return meetDate <= today;
-    if (filter === "results") return meet.results > 0;
-    return true;
-  });
+  const fetchMeets = useCallback(async (f: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (f === "upcoming") params.set("filter", "upcoming");
+      else if (f === "past") params.set("filter", "past");
+
+      const res = await fetch(`/api/meets?${params.toString()}`);
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(json.error || "Failed to fetch meets");
+
+      let filtered = json.data as Meet[];
+      if (f === "results") {
+        filtered = filtered.filter((m) => m.results_verified);
+      }
+
+      setMeets(filtered);
+    } catch (err: any) {
+      setError(err.message || "Failed to load meets");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMeets(filter);
+  }, [filter, fetchMeets]);
 
   return (
-    <DashboardLayout>
+    <>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Meets</h1>
           <p className="text-slate-600 mt-1">Manage competitions and results</p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2" onClick={() => router.push("/dashboard/meets/new")}>
           <Plus className="w-4 h-4" />
           Create Meet
         </Button>
@@ -54,8 +81,8 @@ export default function MeetsPage() {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === f 
-                ? "bg-primary text-white" 
+              filter === f
+                ? "bg-primary text-white"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
@@ -64,18 +91,36 @@ export default function MeetsPage() {
         ))}
       </div>
 
-      <div className="space-y-4">
-        {filteredMeets.map((meet) => (
-          <MeetCard key={meet.id} meet={meet} />
-        ))}
-      </div>
-    </DashboardLayout>
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {meets.length === 0 ? (
+            <Card className="p-12 text-center text-slate-500">
+              No meets found.
+            </Card>
+          ) : (
+            meets.map((meet) => (
+              <MeetCard key={meet.id} meet={meet} />
+            ))
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
-function MeetCard({ meet }: { meet: typeof mockMeets[0] }) {
-  const isUpcoming = new Date(meet.date) > new Date();
-  const hasResults = meet.results > 0;
+function MeetCard({ meet }: { meet: Meet }) {
+  const isUpcoming = new Date(meet.meet_date) > new Date();
+  const hasResults = meet.results_verified;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -83,39 +128,43 @@ function MeetCard({ meet }: { meet: typeof mockMeets[0] }) {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <h3 className="text-lg font-semibold text-slate-900">{meet.name}</h3>
-            <Badge className={levelColors[meet.level]}>{meet.level}</Badge>
-            {meet.verified && (
+            {meet.level && (
+              <Badge className={levelColors[meet.level]}>{meet.level}</Badge>
+            )}
+            {hasResults && (
               <Badge variant="success" className="flex items-center gap-1">
                 <CheckCircle className="w-3 h-3" />
                 Verified
               </Badge>
             )}
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              {new Date(meet.date).toLocaleDateString("es-CO", { 
-                day: "numeric", 
-                month: "long", 
-                year: "numeric" 
+              {new Date(meet.meet_date).toLocaleDateString("es-CO", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
               })}
             </div>
+            {meet.city && (
+              <div className="flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                {meet.city}
+              </div>
+            )}
             <div className="flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
-              {meet.city}
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="font-medium">{meet.pool}</span>
+              <span className="font-medium">{meet.pool_type}</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {hasResults ? (
-            <div className="text-right">
-              <p className="text-2xl font-bold text-slate-900">{meet.results}</p>
-              <p className="text-sm text-slate-500">results</p>
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle className="w-5 h-5" />
+              <span className="text-sm font-medium">Results in</span>
             </div>
           ) : isUpcoming ? (
             <div className="flex items-center gap-2 text-primary">

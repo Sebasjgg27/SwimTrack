@@ -12,12 +12,18 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
-  const variants = {
-    primary: "bg-primary text-white hover:bg-primary-dark",
-    secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200",
-    outline: "border border-slate-200 text-slate-700 hover:bg-slate-50",
-    ghost: "text-slate-600 hover:bg-slate-100",
-    danger: "bg-error text-white hover:bg-red-600",
+  const variantStyles = {
+    primary: "btn-primary",
+    secondary: "btn-secondary",
+    outline: "border text-sm",
+    ghost: "text-sm",
+    danger: "text-sm",
+  };
+
+  const variantColors: Record<string, React.CSSProperties> = {
+    outline: { borderColor: "var(--border-color)", color: "var(--text-primary)" },
+    ghost: { color: "var(--text-secondary)" },
+    danger: { background: "#EF4444", color: "#FFFFFF" },
   };
 
   const sizes = {
@@ -29,11 +35,12 @@ export function Button({
   return (
     <button
       className={cn(
-        "rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-        variants[variant],
+        "rounded-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+        variantStyles[variant],
         sizes[size],
         className
       )}
+      style={variantColors[variant]}
       {...props}
     >
       {children}

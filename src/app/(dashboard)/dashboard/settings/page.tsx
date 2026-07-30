@@ -1,16 +1,64 @@
 "use client";
 
+import { useState } from "react";
+import { useAuth } from "@/contexts/auth-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Building2, Users, Shield, Bell, Database, Save } from "lucide-react";
+import { Building2, Users, Shield, Bell, Database, Save, Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
+  const { user, profile, clubRole, loading: authLoading } = useAuth();
+
+  const [clubName, setClubName] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("CO");
+  const [poolType, setPoolType] = useState("SCM");
+
+  const [savingClub, setSavingClub] = useState(false);
+  const [clubSaved, setClubSaved] = useState(false);
+  const [clubError, setClubError] = useState<string | null>(null);
+
+  const club = clubRole?.clubs;
+
+  const handleSaveClub = async () => {
+    setSavingClub(true);
+    setClubError(null);
+    setClubSaved(false);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          club_name: clubName || club?.name,
+          city: city || club?.city,
+          country_id: country,
+          default_pool_type: poolType,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to save");
+      setClubSaved(true);
+      setTimeout(() => setClubSaved(false), 2000);
+    } catch (err: any) {
+      setClubError(err.message || "Failed to save changes");
+    } finally {
+      setSavingClub(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <DashboardLayout>
+    <>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
         <p className="text-slate-600 mt-1">Manage your club and account settings</p>
@@ -27,8 +75,18 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Club Name" defaultValue="Club Alpha Swimming" />
-              <Input label="City" defaultValue="Bogotá" />
+              <Input
+                label="Club Name"
+                value={clubName}
+                onChange={(e) => setClubName(e.target.value)}
+                placeholder={club?.name ?? "Club name"}
+              />
+              <Input
+                label="City"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder={club?.city ?? "City"}
+              />
               <Select
                 label="Country"
                 options={[
@@ -36,7 +94,8 @@ export default function SettingsPage() {
                   { value: "US", label: "United States" },
                   { value: "ES", label: "Spain" },
                 ]}
-                defaultValue="CO"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
               />
               <Select
                 label="Default Pool Type"
@@ -45,12 +104,29 @@ export default function SettingsPage() {
                   { value: "LCM", label: "Long Course Meters (50m)" },
                   { value: "SCY", label: "Short Course Yards (25y)" },
                 ]}
-                defaultValue="SCM"
+                value={poolType}
+                onChange={(e) => setPoolType(e.target.value)}
               />
             </div>
+
+            {clubError && (
+              <p className="text-sm text-red-600">{clubError}</p>
+            )}
+            {clubSaved && (
+              <p className="text-sm text-success">Changes saved successfully.</p>
+            )}
+
             <div className="flex justify-end">
-              <Button className="flex items-center gap-2">
-                <Save className="w-4 h-4" />
+              <Button
+                className="flex items-center gap-2"
+                onClick={handleSaveClub}
+                disabled={savingClub}
+              >
+                {savingClub ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
                 Save Changes
               </Button>
             </div>
@@ -67,19 +143,17 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { name: "Juan Manager", email: "juan@clubalpha.com", role: "club_admin" },
-                { name: "Maria Coach", email: "maria@clubalpha.com", role: "coach" },
-                { name: "Carlos Coach", email: "carlos@clubalpha.com", role: "coach" },
-              ].map((member, i) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+              {profile && (
+                <div className="flex items-center justify-between py-3 border-b border-slate-100">
                   <div>
-                    <p className="font-medium text-slate-900">{member.name}</p>
-                    <p className="text-sm text-slate-500">{member.email}</p>
+                    <p className="font-medium text-slate-900">
+                      {profile.first_name} {profile.last_name}
+                    </p>
+                    <p className="text-sm text-slate-500">{user?.email ?? "You"}</p>
                   </div>
-                  <Badge>{member.role === "club_admin" ? "Admin" : "Coach"}</Badge>
+                  <Badge>{clubRole?.role === "club_admin" ? "Admin" : clubRole?.role ?? "Member"}</Badge>
                 </div>
-              ))}
+              )}
             </div>
             <Button variant="outline" className="mt-4">Invite Member</Button>
           </CardContent>
@@ -167,12 +241,9 @@ export default function SettingsPage() {
               <Button variant="outline">Export Results (CSV)</Button>
               <Button variant="outline">Export All Data</Button>
             </div>
-            <p className="text-sm text-slate-500">
-              Database usage: 45MB / 500MB (9%)
-            </p>
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

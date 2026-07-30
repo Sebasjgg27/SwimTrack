@@ -50,3 +50,7 @@ yarn-debug.log*
 # Build
 build/
 dist/
+
+# Examples
+tools/examples_1
+tools/examples_2

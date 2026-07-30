@@ -71,22 +71,6 @@ export async function getCurrentUser() {
   return { user, profile, error: profileError?.message ?? null };
 }
 
-export async function createProfile(userId: string, firstName: string, lastName: string) {
-  const supabase = createClient();
-  
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert({
-      id: userId,
-      first_name: firstName,
-      last_name: lastName,
-    })
-    .select()
-    .single();
-
-  return { data, error };
-}
-
 export async function updateProfile(userId: string, updates: Record<string, unknown>) {
   const supabase = createClient();
   

@@ -12,7 +12,11 @@ export function Table({ className, ...props }: TableProps) {
 
 export function TableHeader({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead className={cn("bg-slate-50 border-b border-slate-200", className)} {...props} />
+    <thead
+      className={cn("font-mono text-xs uppercase tracking-wider", className)}
+      style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)" }}
+      {...props}
+    />
   );
 }
 
@@ -23,7 +27,10 @@ export function TableBody({ className, ...props }: React.HTMLAttributes<HTMLTabl
 export function TableRow({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={cn("border-b border-slate-100 hover:bg-slate-50 transition-colors", className)}
+      className={cn("transition-colors", className)}
+      style={{ borderBottom: "1px solid var(--border-color)" }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-card-hover)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       {...props}
     />
   );
@@ -32,12 +39,19 @@ export function TableRow({ className, ...props }: React.HTMLAttributes<HTMLTable
 export function TableHead({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn("px-4 py-3 text-left text-sm font-medium text-slate-600", className)}
+      className={cn("px-4 py-3 text-left font-mono text-xs uppercase tracking-wider", className)}
+      style={{ color: "var(--text-secondary)" }}
       {...props}
     />
   );
 }
 
 export function TableCell({ className, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-4 py-3 text-sm text-slate-900", className)} {...props} />;
+  return (
+    <td
+      className={cn("px-4 py-3 text-sm", className)}
+      style={{ color: "var(--text-primary)" }}
+      {...props}
+    />
+  );
 }

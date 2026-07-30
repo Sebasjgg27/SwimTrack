@@ -1,18 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Waves, Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
+import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import { signIn } from "@/lib/auth";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "/dashboard";
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -37,36 +36,37 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--bg-main)" }}>
+      <div className="grid-background" />
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <Waves className="w-10 h-10 text-primary" />
-            <span className="text-3xl font-bold text-white">SwimTrack</span>
+          <Link href="/" className="inline-flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "var(--accent-color)", boxShadow: "0 0 10px var(--accent-color)" }} />
+            <span className="font-mono font-bold text-xl tracking-wider" style={{ color: "var(--text-primary)" }}>
+              SWIMTRACK
+            </span>
           </Link>
-          <p className="text-slate-400 mt-2">Sign in to your account</p>
+          <p className="mt-3 font-mono text-sm uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Sign in to your account</p>
         </div>
 
-        <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-8">
+        <div className="card p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-center gap-2">
+              <div className="rounded-lg p-3 flex items-center gap-2" style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)" }}>
                 <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
                 <span className="text-red-400 text-sm">{error}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Email Address
-              </label>
+              <label className="label">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: "var(--text-secondary)" }} />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  className="input pl-10"
                   placeholder="you@example.com"
                   required
                 />
@@ -74,42 +74,36 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Password
-              </label>
+              <label className="label">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: "var(--text-secondary)" }} />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  className="input pl-10"
                   placeholder="Enter your password"
                   required
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end">
-              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </Link>
-            </div>
+
 
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2"
+              className="btn-primary w-full"
             >
               {isLoading ? "Signing in..." : "Sign In"}
               {!isLoading && <ArrowRight className="w-4 h-4" />}
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-700 text-center">
-            <p className="text-slate-400">
+          <div className="mt-6 pt-6 text-center" style={{ borderTop: "1px solid var(--border-color)" }}>
+            <p className="font-mono text-sm" style={{ color: "var(--text-secondary)" }}>
               Don&apos;t have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline font-medium">
+              <Link href="/register" className="font-medium hover:underline" style={{ color: "var(--accent-color)" }}>
                 Sign up
               </Link>
             </p>
@@ -117,11 +111,25 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-8 text-center">
-          <p className="text-slate-500 text-sm">
-            <Link href="/" className="hover:text-slate-300">Back to home</Link>
-          </p>
+          <Link href="/" className="font-mono text-xs uppercase tracking-wider hover:underline" style={{ color: "var(--text-secondary)" }}>
+            &larr; Back to home
+          </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--bg-main)" }}>
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--accent-color)" }} />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -3,11 +3,17 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { calculateCSS, calculateZones, formatPace } from "@/lib/utils";
-import { Clock, Calculator, Save, RefreshCw, CheckCircle } from "lucide-react";
+import { calculateZones, formatPace, parseTime } from "@/lib/utils";
+import { Clock, Calculator, Save, RefreshCw, CheckCircle, Loader2 } from "lucide-react";
+
+interface TimeTrial {
+  id: string;
+  distance: number;
+  time_ms: number;
+  trial_date: string;
+  pool_type: string;
+  notes: string | null;
+}
 
 export default function TimeTrialsPage() {
   const [formData, setFormData] = useState({
@@ -20,80 +26,129 @@ export default function TimeTrialsPage() {
   const [zones, setZones] = useState<ReturnType<typeof calculateZones> | null>(null);
   const [css, setCss] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load saved data on mount
   useEffect(() => {
-    const savedData = localStorage.getItem("swimtrack_time_trials");
-    if (savedData) {
-      const parsed = JSON.parse(savedData);
-      setFormData(parsed);
-      if (parsed.t400 && parsed.t200) {
-        const cssValue = calculateCSS(parseTime(parsed.t400), parseTime(parsed.t200));
-        if (cssValue > 0) {
-          setCss(cssValue);
-          setZones(calculateZones(cssValue));
-          setCalculated(true);
+    async function loadTrials() {
+      try {
+        const params = new URLSearchParams();
+        params.set("swimmer_id", "me");
+        const res = await fetch(`/api/time-trials?${params.toString()}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        const trials: TimeTrial[] = json.data ?? [];
+        const t400 = trials.find((t) => t.distance === 400);
+        const t200 = trials.find((t) => t.distance === 200);
+        if (t400 && t200) {
+          setFormData({
+            t400: formatMsToInput(t400.time_ms),
+            t200: formatMsToInput(t200.time_ms),
+            poolType: t400.pool_type,
+            trialDate: t400.trial_date,
+          });
         }
+      } catch {
+        // silently ignore – user can enter fresh data
       }
     }
+    loadTrials();
   }, []);
 
-  const parseTime = (timeStr: string): number => {
-    if (!timeStr) return 0;
-    const parts = timeStr.split(/[:.]/);
-    let ms = 0;
-    
-    if (parts.length === 3) {
-      const minutes = parseInt(parts[0]) || 0;
-      const seconds = parseInt(parts[1]) || 0;
-      const centiseconds = parseInt(parts[2]) || 0;
-      ms = (minutes * 60000) + (seconds * 1000) + (centiseconds * 10);
-    } else if (parts.length === 2) {
-      const seconds = parseInt(parts[0]) || 0;
-      const centiseconds = parseInt(parts[1]) || 0;
-      ms = (seconds * 1000) + (centiseconds * 10);
-    } else {
-      ms = parseInt(timeStr) || 0;
-    }
-    
-    return ms;
-  };
-
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
     const t400ms = parseTime(formData.t400);
     const t200ms = parseTime(formData.t200);
-    
-    if (t400ms > 0 && t200ms > 0 && t400ms > t200ms) {
-      const cssValue = calculateCSS(t400ms, t200ms);
-      if (cssValue > 0) {
-        setCss(cssValue);
-        setZones(calculateZones(cssValue));
-        setCalculated(true);
-      }
+
+    if (t400ms <= 0 || t200ms <= 0 || t400ms <= t200ms) {
+      setError("400m time must be valid and slower than 200m time.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/time-trials/calculate-css", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          swimmer_id: "me",
+          distance: 400,
+          pool_type: formData.poolType,
+          t400_ms: t400ms,
+          t200_ms: t200ms,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to calculate CSS");
+
+      const z = json.data.zones;
+      setCss(z.css);
+      setZones(z);
+      setCalculated(true);
+    } catch (err: any) {
+      setError(err.message || "Calculation failed");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSave = () => {
-    localStorage.setItem("swimtrack_time_trials", JSON.stringify(formData));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    const t400ms = parseTime(formData.t400);
+    const t200ms = parseTime(formData.t200);
+
+    setLoading(true);
+    setError(null);
+    try {
+      const saveTrial = async (distance: number, time_ms: number) => {
+        const res = await fetch("/api/time-trials", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            swimmer_id: "me",
+            distance,
+            time_ms,
+            trial_date: formData.trialDate,
+            pool_type: formData.poolType,
+          }),
+        });
+        if (!res.ok) {
+          const json = await res.json();
+          throw new Error(json.error || "Failed to save time trial");
+        }
+      };
+
+      await saveTrial(400, t400ms);
+      await saveTrial(200, t200ms);
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      setError(err.message || "Failed to save");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = () => {
-    setFormData({ t400: "", t200: "", poolType: "SCM", trialDate: new Date().toISOString().split("T")[0] });
+    setFormData({
+      t400: "",
+      t200: "",
+      poolType: "SCM",
+      trialDate: new Date().toISOString().split("T")[0],
+    });
     setCalculated(false);
     setZones(null);
     setCss(null);
-    localStorage.removeItem("swimtrack_time_trials");
+    setError(null);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setCalculated(false);
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Time Trials</h1>
         <p className="text-slate-600 mt-1">Enter your 400m and 200m time trials to calculate your training pace zones</p>
@@ -170,13 +225,21 @@ export default function TimeTrialsPage() {
               </div>
             </div>
 
+            {error && (
+              <p className="text-sm text-red-600">{error}</p>
+            )}
+
             <div className="flex gap-3">
               <Button
                 onClick={handleCalculate}
-                disabled={!formData.t400 || !formData.t200}
+                disabled={!formData.t400 || !formData.t200 || loading}
                 className="flex-1 flex items-center justify-center gap-2"
               >
-                <Calculator className="w-4 h-4" />
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Calculator className="w-4 h-4" />
+                )}
                 Calculate Zones
               </Button>
               <Button
@@ -204,8 +267,12 @@ export default function TimeTrialsPage() {
               Your Training Zones
             </CardTitle>
             {calculated && (
-              <Button onClick={handleSave} variant="outline" size="sm" className="flex items-center gap-2">
-                <Save className="w-4 h-4" />
+              <Button onClick={handleSave} variant="outline" size="sm" className="flex items-center gap-2" disabled={loading}>
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
                 Save
               </Button>
             )}
@@ -245,12 +312,12 @@ export default function TimeTrialsPage() {
                 <div className="mt-6 p-4 bg-slate-50 rounded-lg">
                   <h4 className="font-medium text-slate-900 mb-2">How to use these zones:</h4>
                   <ul className="text-sm text-slate-600 space-y-1">
-                    <li>• <strong>A1 (Recovery):</strong> Warm-up, cool-down, active recovery</li>
-                    <li>• <strong>A2 (Endurance):</strong> Build aerobic base, longer distances</li>
-                    <li>• <strong>A3 (Threshold):</strong> Lactate threshold training</li>
-                    <li>• <strong>VO2:</strong> High intensity intervals, 3-5 min efforts</li>
-                    <li>• <strong>Tolerance:</strong> Lactate tolerance, 100-200m race prep</li>
-                    <li>• <strong>All Out:</strong> Sprints, 25-50m maximum effort</li>
+                    <li>&bull; <strong>A1 (Recovery):</strong> Warm-up, cool-down, active recovery</li>
+                    <li>&bull; <strong>A2 (Endurance):</strong> Build aerobic base, longer distances</li>
+                    <li>&bull; <strong>A3 (Threshold):</strong> Lactate threshold training</li>
+                    <li>&bull; <strong>VO2:</strong> High intensity intervals, 3-5 min efforts</li>
+                    <li>&bull; <strong>Tolerance:</strong> Lactate tolerance, 100-200m race prep</li>
+                    <li>&bull; <strong>All Out:</strong> Sprints, 25-50m maximum effort</li>
                   </ul>
                 </div>
               </div>
@@ -274,6 +341,14 @@ export default function TimeTrialsPage() {
           </div>
         </CardContent>
       </Card>
-    </DashboardLayout>
+    </>
   );
+}
+
+function formatMsToInput(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  const cs = Math.floor((ms % 1000) / 10);
+  return `${min}:${String(sec).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }

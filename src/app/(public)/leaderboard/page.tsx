@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { formatTime } from "@/lib/utils";
-import { Waves, ChevronDown, Filter, Globe } from "lucide-react";
+import { Globe, Filter } from "lucide-react";
 
 const mockLeaderboard = [
   { rank: 1, name: "Juan Perez", age: 16, club: "Club Alpha", country: "Colombia", time: 52340, event: "100m Freestyle", pool: "SCM", date: "2026-04-15", points: 856 },
@@ -27,130 +25,104 @@ export default function PublicLeaderboardPage() {
   const [gender, setGender] = useState("all");
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800">
-      <header className="border-b border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Waves className="w-8 h-8 text-primary" />
-            <span className="text-2xl font-bold text-white">SwimTrack</span>
-          </Link>
-          <Link href="/login" className="text-slate-300 hover:text-white transition-colors">
-            Login
-          </Link>
-        </div>
-      </header>
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="text-center mb-12">
+        <div className="section-label mb-4">Global Rankings</div>
+        <h1 className="text-4xl font-bold mb-3" style={{ color: "var(--text-primary)" }}>Public Leaderboard</h1>
+        <p style={{ color: "var(--text-secondary)" }}>Rankings across Colombia</p>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Public Leaderboard</h1>
-          <p className="text-slate-400"> Rankings across Colombia</p>
-        </div>
+      {/* Filters */}
+      <div className="flex items-center justify-center gap-3 mb-8">
+        <Globe className="w-5 h-5" style={{ color: "var(--text-secondary)" }} />
+        <select
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className="input w-auto"
+        >
+          <option value="CO">Colombia</option>
+          <option value="US">United States</option>
+          <option value="ES">Spain</option>
+        </select>
+      </div>
 
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Globe className="w-5 h-5 text-slate-400" />
-          <select 
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2"
-          >
-            <option value="CO">Colombia</option>
-            <option value="US">United States</option>
-            <option value="ES">Spain</option>
-          </select>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <select value={event} onChange={(e) => setEvent(e.target.value)} className="input">
+          <option value="50-free">50m Freestyle</option>
+          <option value="100-free">100m Freestyle</option>
+          <option value="200-free">200m Freestyle</option>
+          <option value="400-free">400m Freestyle</option>
+          <option value="800-free">800m Freestyle</option>
+          <option value="1500-free">1500m Freestyle</option>
+        </select>
+        <select value={poolType} onChange={(e) => setPoolType(e.target.value)} className="input">
+          <option value="SCM">SCM (25m)</option>
+          <option value="LCM">LCM (50m)</option>
+          <option value="SCY">SCY (25y)</option>
+        </select>
+        <select value={gender} onChange={(e) => setGender(e.target.value)} className="input">
+          <option value="all">All Genders</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+        <button className="btn-secondary flex items-center justify-center gap-2">
+          <Filter className="w-4 h-4" />
+          More Filters
+        </button>
+      </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <select 
-            value={event}
-            onChange={(e) => setEvent(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2"
-          >
-            <option value="50-free">50m Freestyle</option>
-            <option value="100-free">100m Freestyle</option>
-            <option value="200-free">200m Freestyle</option>
-            <option value="400-free">400m Freestyle</option>
-            <option value="800-free">800m Freestyle</option>
-            <option value="1500-free">1500m Freestyle</option>
-          </select>
-          <select 
-            value={poolType}
-            onChange={(e) => setPoolType(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2"
-          >
-            <option value="SCM">SCM (25m)</option>
-            <option value="LCM">LCM (50m)</option>
-            <option value="SCY">SCY (25y)</option>
-          </select>
-          <select 
-            value={gender}
-            onChange={(e) => setGender(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2"
-          >
-            <option value="all">All Genders</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-          <button className="flex items-center justify-center gap-2 bg-primary text-white rounded-lg px-4 py-2 hover:bg-primary-dark transition-colors">
-            <Filter className="w-4 h-4" />
-            More Filters
-          </button>
+      {/* Leaderboard Table */}
+      <div className="glass-card overflow-hidden">
+        <div className="grid grid-cols-12 gap-4 px-6 py-4 font-mono text-xs uppercase tracking-wider" style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)" }}>
+          <div className="col-span-1">Rank</div>
+          <div className="col-span-3">Swimmer</div>
+          <div className="col-span-1">Age</div>
+          <div className="col-span-2">Club</div>
+          <div className="col-span-2">Time</div>
+          <div className="col-span-1">Pts</div>
+          <div className="col-span-2">Date</div>
         </div>
 
-        <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
-          <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-slate-800 border-b border-slate-700 text-sm font-medium text-slate-400">
-            <div className="col-span-1">Rank</div>
-            <div className="col-span-3">Swimmer</div>
-            <div className="col-span-1">Age</div>
-            <div className="col-span-2">Club</div>
-            <div className="col-span-2">Time</div>
-            <div className="col-span-1">Pts</div>
-            <div className="col-span-2">Date</div>
-          </div>
-
-          {mockLeaderboard.map((entry) => (
-            <div 
-              key={entry.rank} 
-              className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors items-center"
-            >
-              <div className="col-span-1">
-                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-                  entry.rank === 1 ? "bg-yellow-500 text-slate-900" :
-                  entry.rank === 2 ? "bg-slate-400 text-slate-900" :
-                  entry.rank === 3 ? "bg-orange-400 text-slate-900" :
-                  "bg-slate-700 text-slate-300"
-                }`}>
-                  {entry.rank}
-                </span>
-              </div>
-              <div className="col-span-3">
-                <span className="text-white font-medium">{entry.name}</span>
-              </div>
-              <div className="col-span-1 text-slate-400">{entry.age}</div>
-              <div className="col-span-2 text-slate-400">{entry.club}</div>
-              <div className="col-span-2">
-                <span className="font-mono text-lg font-bold text-white">{formatTime(entry.time)}</span>
-              </div>
-              <div className="col-span-1">
-                <span className="text-primary font-medium">{entry.points}</span>
-              </div>
-              <div className="col-span-2 text-slate-400 text-sm">{entry.date}</div>
+        {mockLeaderboard.map((entry) => (
+          <div
+            key={entry.rank}
+            className="grid grid-cols-12 gap-4 px-6 py-4 transition-colors items-center"
+            style={{ borderBottom: "1px solid var(--border-color)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-card-hover)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <div className="col-span-1">
+              <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
+                entry.rank === 1 ? "bg-yellow-500/20 text-yellow-400" :
+                entry.rank === 2 ? "bg-slate-400/20 text-slate-300" :
+                entry.rank === 3 ? "bg-orange-400/20 text-orange-400" :
+                ""
+              }`} style={entry.rank > 3 ? { background: "var(--bg-card)", color: "var(--text-secondary)" } : {}}>
+                {entry.rank}
+              </span>
             </div>
-          ))}
-        </div>
+            <div className="col-span-3">
+              <span className="font-medium" style={{ color: "var(--text-primary)" }}>{entry.name}</span>
+            </div>
+            <div className="col-span-1" style={{ color: "var(--text-secondary)" }}>{entry.age}</div>
+            <div className="col-span-2" style={{ color: "var(--text-secondary)" }}>{entry.club}</div>
+            <div className="col-span-2">
+              <span className="font-mono text-lg font-bold" style={{ color: "var(--text-primary)" }}>{formatTime(entry.time)}</span>
+            </div>
+            <div className="col-span-1">
+              <span className="font-medium" style={{ color: "var(--accent-color)" }}>{entry.points}</span>
+            </div>
+            <div className="col-span-2 font-mono text-sm" style={{ color: "var(--text-secondary)" }}>{entry.date}</div>
+          </div>
+        ))}
+      </div>
 
-        <div className="mt-8 text-center">
-          <p className="text-slate-400 text-sm">
-            Showing top 10 of 156 swimmers • 
-            <button className="text-primary hover:underline ml-1">Load more</button>
-          </p>
-        </div>
-      </main>
-
-      <footer className="border-t border-slate-700/50 py-8 mt-12">
-        <div className="max-w-7xl mx-auto px-4 text-center text-slate-400 text-sm">
-          <p>Powered by SwimTrack • Leaderboard updated daily</p>
-        </div>
-      </footer>
+      <div className="mt-8 text-center">
+        <p className="font-mono text-sm" style={{ color: "var(--text-secondary)" }}>
+          Showing top 10 of 156 swimmers &bull;{" "}
+          <button className="hover:underline" style={{ color: "var(--accent-color)" }}>Load more</button>
+        </p>
+      </div>
     </div>
   );
 }
