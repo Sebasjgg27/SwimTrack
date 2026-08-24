@@ -1,184 +1,171 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Building2, MapPin, Plus, Search, Users } from "lucide-react";
+
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase";
-import { Plus, Search, Building2, MapPin, Users, Edit, MoreVertical } from "lucide-react";
 
-const mockClubs = [
-  { id: "1", name: "Club Alpha Swimming", city: "Bogotá", country: "Colombia", members: 45, pools: ["SCM"], verified: true },
-  { id: "2", name: "Club Beta Aquatics", city: "Medellín", country: "Colombia", members: 32, pools: ["SCM", "LCM"], verified: true },
-  { id: "3", name: "Club Gamma", city: "Cali", country: "Colombia", members: 28, pools: ["SCM"], verified: false },
-];
-
-interface Club {
+interface ClubSummary {
   id: string;
   name: string;
-  city: string;
+  city: string | null;
   country: string;
-  members: number;
-  pools: string[];
-  verified: boolean;
+  memberCount: number;
+}
+
+interface ClubRoleRow {
+  club:
+    | {
+        id: string;
+        name: string;
+        city: string | null;
+        country: { name: string } | Array<{ name: string }> | null;
+        swimmers: Array<{ count: number }>;
+      }
+    | Array<{
+        id: string;
+        name: string;
+        city: string | null;
+        country: { name: string } | Array<{ name: string }> | null;
+        swimmers: Array<{ count: number }>;
+      }>
+    | null;
+}
+
+function firstRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
 export default function ClubsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [clubs, setClubs] = useState<Club[]>(mockClubs);
+  const [clubs, setClubs] = useState<ClubSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function fetchClubs() {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("clubs")
-          .select("*")
-          .order("name");
+      const supabase = createClient();
+      const { data, error: queryError } = await supabase
+        .from("user_roles")
+        .select(
+          "club:clubs!user_roles_club_id_fkey(id,name,city,country:countries(name),swimmers(count))"
+        );
 
-        if (error) {
-          console.warn("Supabase not configured, using mock data:", error.message);
-          setClubs(mockClubs);
-        } else if (data) {
-          setClubs(data.map((c: { id: string; name: string; city: string; country: string }) => ({
-            id: c.id,
-            name: c.name,
-            city: c.city,
-            country: c.country,
-            members: 0,
-            pools: ["SCM"],
-            verified: false,
-          })));
-        }
-      } catch (err) {
-        console.warn("Error connecting to Supabase, using mock data");
-        setClubs(mockClubs);
-      } finally {
+      if (queryError) {
+        setError(queryError.message);
         setIsLoading(false);
+        return;
       }
+
+      const uniqueClubs = new Map<string, ClubSummary>();
+      for (const row of (data ?? []) as unknown as ClubRoleRow[]) {
+        const club = firstRelation(row.club);
+        if (!club) continue;
+        const country = firstRelation(club.country);
+        uniqueClubs.set(club.id, {
+          id: club.id,
+          name: club.name,
+          city: club.city,
+          country: country?.name ?? "Unknown country",
+          memberCount: club.swimmers[0]?.count ?? 0,
+        });
+      }
+
+      setClubs([...uniqueClubs.values()].sort((a, b) => a.name.localeCompare(b.name)));
+      setIsLoading(false);
     }
-    fetchClubs();
+
+    void fetchClubs();
   }, []);
 
-  const filteredClubs = clubs.filter(club =>
-    club.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    club.city.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredClubs = clubs.filter((club) =>
+    `${club.name} ${club.city ?? ""} ${club.country}`
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
   );
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Clubs</h1>
-          <p className="text-slate-600 mt-1">Manage swimming clubs</p>
+          <h1 className="text-3xl font-bold text-slate-900">My Clubs</h1>
+          <p className="mt-1 text-slate-600">Clubs where you have an assigned role</p>
         </div>
         <Link href="/dashboard/clubs/add">
           <Button className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Club
+            <Plus className="h-4 w-4" />
+            Create Club
           </Button>
         </Link>
       </div>
 
-      <div className="flex gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            placeholder="Search clubs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+      <div className="relative mb-6 max-w-md">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          placeholder="Search your clubs..."
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          className="pl-10"
+        />
       </div>
 
+      {error && (
+        <Card className="mb-6 border-error/40 bg-error/5">
+          <CardContent>
+            <p role="alert" className="text-sm text-error">
+              Could not load your clubs: {error}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <div className="h-32 bg-slate-100 rounded" />
+        <p className="text-slate-500">Loading clubs...</p>
+      ) : filteredClubs.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredClubs.map((club) => (
+            <Card key={club.id}>
+              <CardContent>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Building2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-slate-900">{club.name}</h2>
+                    <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                      <MapPin className="h-3 w-3" />
+                      {[club.city, club.country].filter(Boolean).join(", ")}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4 text-sm text-slate-600">
+                  <Users className="h-4 w-4" />
+                  {club.memberCount} {club.memberCount === 1 ? "swimmer" : "swimmers"}
+                </p>
+              </CardContent>
             </Card>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClubs.map((club) => (
-            <ClubCard key={club.id} club={club} />
-          ))}
-        </div>
-      )}
-
-      {filteredClubs.length === 0 && !isLoading && (
-        <Card className="text-center py-12">
-          <Building2 className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-          <p className="text-slate-500">No clubs found</p>
-          <Link href="/dashboard/clubs/add">
-            <Button variant="outline" className="mt-4">Add First Club</Button>
-          </Link>
+        <Card className="py-12 text-center">
+          <Building2 className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+          <p className="text-slate-600">
+            {searchQuery ? "No clubs match your search." : "You do not have a club yet."}
+          </p>
+          {!searchQuery && (
+            <Link href="/dashboard/clubs/add">
+              <Button variant="outline" className="mt-4">
+                Create your first club
+              </Button>
+            </Link>
+          )}
         </Card>
       )}
     </DashboardLayout>
-  );
-}
-
-function ClubCard({ club }: { club: Club }) {
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent>
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-slate-900">{club.name}</h3>
-              <div className="flex items-center gap-1 text-sm text-slate-500">
-                <MapPin className="w-3 h-3" />
-                {club.city}, {club.country}
-              </div>
-            </div>
-          </div>
-          <button className="text-slate-400 hover:text-slate-600">
-            <MoreVertical className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-          <div className="flex items-center gap-4 text-sm text-slate-500">
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              <span>{club.members} members</span>
-            </div>
-            <div className="flex gap-1">
-              {club.pools.map(pool => (
-                <Badge key={pool}>{pool}</Badge>
-              ))}
-            </div>
-          </div>
-          {club.verified && (
-            <Badge variant="success">Verified</Badge>
-          )}
-        </div>
-
-        <div className="flex gap-2 mt-4">
-          <Link href={`/dashboard/clubs/${club.id}`} className="flex-1">
-            <Button variant="outline" className="w-full flex items-center gap-2">
-              <Edit className="w-4 h-4" />
-              Edit
-            </Button>
-          </Link>
-          <Link href={`/dashboard/clubs/${club.id}/swimmers`} className="flex-1">
-            <Button variant="ghost" className="w-full flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              View Swimmers
-            </Button>
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

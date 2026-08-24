@@ -71,22 +71,6 @@ export async function getCurrentUser() {
   return { user, profile, error: profileError?.message ?? null };
 }
 
-export async function createProfile(userId: string, firstName: string, lastName: string) {
-  const supabase = createClient();
-  
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert({
-      id: userId,
-      first_name: firstName,
-      last_name: lastName,
-    })
-    .select()
-    .single();
-
-  return { data, error };
-}
-
 export async function updateProfile(userId: string, updates: Record<string, unknown>) {
   const supabase = createClient();
   
@@ -129,32 +113,22 @@ export async function createSwimmer(
   return { data, error };
 }
 
-export async function getOrCreateClub(clubName: string, countryId: string) {
+export async function createClubWithAdmin(
+  clubName: string,
+  countryCode: string,
+  city?: string
+) {
   const supabase = createClient();
   
   if (!clubName.trim()) {
     return { club: null, error: null };
   }
 
-  const { data: existingClubs } = await supabase
-    .from("clubs")
-    .select("*")
-    .ilike("name", clubName)
-    .limit(1);
-
-  if (existingClubs && existingClubs.length > 0) {
-    return { club: existingClubs[0], error: null };
-  }
-
-  const { data, error } = await supabase
-    .from("clubs")
-    .insert({
-      name: clubName,
-      country_id: countryId,
-      is_public: true,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc("create_club_with_admin", {
+    p_name: clubName,
+    p_country_code: countryCode,
+    p_city: city || null,
+  });
 
   return { club: data, error };
 }

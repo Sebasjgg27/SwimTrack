@@ -11,7 +11,11 @@ import { signIn } from "@/lib/auth";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectPath = searchParams.get("redirect") || "/dashboard";
+  const requestedRedirect = searchParams.get("redirect");
+  const redirectPath =
+    requestedRedirect?.startsWith("/") && !requestedRedirect.startsWith("//")
+      ? requestedRedirect
+      : "/dashboard";
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +36,8 @@ function LoginForm() {
     }
 
     if (data?.user) {
-      router.push(redirectPath);
+      router.replace(redirectPath);
+      router.refresh();
     }
   };
 

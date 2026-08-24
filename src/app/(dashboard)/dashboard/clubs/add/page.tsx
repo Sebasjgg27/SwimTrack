@@ -2,99 +2,60 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { ArrowLeft, Building2, CheckCircle, Save } from "lucide-react";
+
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { createClient } from "@/lib/supabase";
-import { ArrowLeft, Save, Building2, MapPin, Users, CheckCircle } from "lucide-react";
-
-interface ClubFormData {
-  name: string;
-  city: string;
-  country: string;
-  defaultPool: string;
-  website: string;
-  email: string;
-  phone: string;
-  description: string;
-}
+import { createClubWithAdmin } from "@/lib/auth";
 
 export default function AddClubPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [formData, setFormData] = useState<ClubFormData>({
+  const [error, setError] = useState("");
+  const [formData, setFormData] = useState({
     name: "",
     city: "",
     country: "CO",
-    defaultPool: "SCM",
-    website: "",
-    email: "",
-    phone: "",
-    description: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
+    setFormData((current) => ({ ...current, [name]: value }));
+    setError("");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    try {
-      const supabase = createClient();
-      const newId = `club_${Date.now()}`;
-      
-      const { error } = await supabase
-        .from("clubs")
-        .insert({
-          id: newId,
-          name: formData.name,
-          city: formData.city,
-          country: formData.country,
-          default_pool: formData.defaultPool,
-          website: formData.website,
-          email: formData.email,
-          phone: formData.phone,
-          description: formData.description,
-        });
+    const { club, error: createError } = await createClubWithAdmin(
+      formData.name,
+      formData.country,
+      formData.city
+    );
 
-      if (error) {
-        console.warn("Supabase not available, saving locally:", error.message);
-        const clubs = JSON.parse(localStorage.getItem("clubs") || "[]");
-        clubs.push({ id: newId, ...formData });
-        localStorage.setItem("clubs", JSON.stringify(clubs));
-      }
-
-      setIsSuccess(true);
-      setTimeout(() => {
-        router.push("/dashboard/clubs");
-      }, 1500);
-    } catch (err) {
-      console.error("Error adding club:", err);
-      const clubs = JSON.parse(localStorage.getItem("clubs") || "[]");
-      clubs.push({ id: `club_${Date.now()}`, ...formData });
-      localStorage.setItem("clubs", JSON.stringify(clubs));
-      setIsSuccess(true);
-      setTimeout(() => {
-        router.push("/dashboard/clubs");
-      }, 1500);
-    } finally {
+    if (createError || !club) {
+      setError(createError?.message ?? "The club could not be created.");
       setIsLoading(false);
+      return;
     }
+
+    setIsSuccess(true);
+    setTimeout(() => router.push("/dashboard/clubs"), 900);
   };
 
   if (isSuccess) {
     return (
       <DashboardLayout>
-        <div className="flex flex-col items-center justify-center py-20">
-          <CheckCircle className="w-20 h-20 text-success mb-6" />
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Club Added!</h1>
-          <p className="text-slate-600">Redirecting to clubs list...</p>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <CheckCircle className="mb-6 h-20 w-20 text-success" />
+          <h1 className="text-3xl font-bold text-slate-900">Club created</h1>
+          <p className="mt-2 text-slate-600">You are its first administrator.</p>
         </div>
       </DashboardLayout>
     );
@@ -102,142 +63,76 @@ export default function AddClubPage() {
 
   return (
     <DashboardLayout>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => router.push("/dashboard/clubs")}
+          className="mb-4 -ml-2 flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Clubs
+        </Button>
+
         <div className="mb-8">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => router.push("/dashboard/clubs")}
-            className="mb-4 -ml-2 flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Clubs
-          </Button>
-          <h1 className="text-3xl font-bold text-slate-900">Add New Club</h1>
-          <p className="text-slate-600 mt-1">Register a new swimming club</p>
+          <h1 className="text-3xl font-bold text-slate-900">Create a Club</h1>
+          <p className="mt-1 text-slate-600">
+            You will become the administrator and can add swimmers next.
+          </p>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-3">
-              <Building2 className="w-5 h-5 text-primary" />
-              <CardTitle>Club Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                label="Club Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Enter club name"
-                required
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="City"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="City"
-                  required
-                />
-                <Select
-                  label="Country"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  options={[
-                    { value: "CO", label: "Colombia" },
-                    { value: "US", label: "United States" },
-                    { value: "ES", label: "Spain" },
-                    { value: "MX", label: "Mexico" },
-                    { value: "AR", label: "Argentina" },
-                  ]}
-                />
-              </div>
-            </CardContent>
-          </Card>
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg border border-error/40 bg-error/5 p-3 text-sm text-error">
+            {error}
+          </p>
+        )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-3">
-              <MapPin className="w-5 h-5 text-secondary" />
-              <CardTitle>Pool & Facilities</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-3">
+            <Building2 className="h-5 w-5 text-primary" />
+            <CardTitle>Club details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              label="Club Name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Enter club name"
+              required
+            />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input
+                label="City"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="City"
+              />
               <Select
-                label="Default Pool Type"
-                name="defaultPool"
-                value={formData.defaultPool}
+                label="Country"
+                name="country"
+                value={formData.country}
                 onChange={handleChange}
                 options={[
-                  { value: "SCM", label: "Short Course Meters (25m)" },
-                  { value: "LCM", label: "Long Course Meters (50m)" },
-                  { value: "SCY", label: "Short Course Yards (25y)" },
+                  { value: "CO", label: "Colombia" },
+                  { value: "US", label: "United States" },
+                  { value: "ES", label: "Spain" },
+                  { value: "MX", label: "Mexico" },
+                  { value: "AR", label: "Argentina" },
+                  { value: "BR", label: "Brazil" },
                 ]}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-3">
-              <Users className="w-5 h-5 text-accent" />
-              <CardTitle>Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Website"
-                  name="website"
-                  value={formData.website}
-                  onChange={handleChange}
-                  placeholder="https://clubwebsite.com"
-                />
-                <Input
-                  label="Phone"
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="+57 300 123 4567"
-                />
-              </div>
-              <Input
-                label="Email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="contact@club.com"
-              />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  placeholder="Brief description of the club..."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/dashboard/clubs")}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              <Save className="w-4 h-4 mr-2" />
-              {isLoading ? "Adding..." : "Add Club"}
-            </Button>
-          </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={() => router.push("/dashboard/clubs")}>Cancel</Button>
+          <Button type="submit" disabled={isLoading}>
+            <Save className="mr-2 h-4 w-4" />
+            {isLoading ? "Creating..." : "Create Club"}
+          </Button>
         </div>
       </form>
     </DashboardLayout>

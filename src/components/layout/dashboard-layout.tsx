@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, 
   Users, 
@@ -16,6 +17,7 @@ import {
   Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/lib/auth";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -34,6 +36,24 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    setSignOutError("");
+    const { error } = await signOut();
+
+    if (error) {
+      setSignOutError(error.message);
+      setIsSigningOut(false);
+      return;
+    }
+
+    router.replace("/login");
+    router.refresh();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,10 +96,20 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <ChevronLeft className="w-5 h-5" />
             <span>Back to Home</span>
           </Link>
-          <button className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white transition-colors w-full mt-2">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white transition-colors w-full mt-2 disabled:opacity-60"
+          >
             <LogOut className="w-5 h-5" />
-            <span>Logout</span>
+            <span>{isSigningOut ? "Signing out..." : "Sign out"}</span>
           </button>
+          {signOutError && (
+            <p role="alert" className="mt-2 px-3 text-xs text-red-300">
+              {signOutError}
+            </p>
+          )}
         </div>
       </aside>
 
