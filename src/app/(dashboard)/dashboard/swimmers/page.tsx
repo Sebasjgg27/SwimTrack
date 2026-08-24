@@ -1,178 +1,174 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Plus, Search, UserRound, Users } from "lucide-react";
+
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { createClient } from "@/lib/supabase";
-import { Plus, Search, Filter, MoreVertical, Clock } from "lucide-react";
+import { calculateAge } from "@/lib/utils";
 
-const mockSwimmers = [
-  { id: "1", name: "Juan Perez", age: 16, gender: "male", events: 5, pbCount: 3, lastTraining: "2 days ago" },
-  { id: "2", name: "Maria Garcia", age: 14, gender: "female", events: 4, pbCount: 2, lastTraining: "1 day ago" },
-  { id: "3", name: "Carlos Lopez", age: 18, gender: "male", events: 6, pbCount: 4, lastTraining: "Today" },
-  { id: "4", name: "Ana Martinez", age: 15, gender: "female", events: 3, pbCount: 1, lastTraining: "3 days ago" },
-  { id: "5", name: "Pedro Rodriguez", age: 17, gender: "male", events: 5, pbCount: 2, lastTraining: "Yesterday" },
-  { id: "6", name: "Sofia Hernandez", age: 13, gender: "female", events: 4, pbCount: 1, lastTraining: "4 days ago" },
-];
+interface SwimmerRow {
+  id: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string | null;
+  gender: "male" | "female" | null;
+  club: { name: string } | Array<{ name: string }> | null;
+}
 
-interface Swimmer {
+interface SwimmerSummary {
   id: string;
   name: string;
-  age: number;
-  gender: string;
-  events: number;
-  pbCount: number;
-  lastTraining: string;
+  age: number | null;
+  gender: "male" | "female" | null;
+  clubName: string;
+}
+
+function firstRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value;
 }
 
 export default function SwimmersPage() {
+  const [swimmers, setSwimmers] = useState<SwimmerSummary[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [genderFilter, setGenderFilter] = useState("all");
-  const [swimmers, setSwimmers] = useState<Swimmer[]>(mockSwimmers);
+  const [gender, setGender] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function fetchSwimmers() {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("swimmers")
-          .select("*")
-          .order("name");
-        
-        if (error) {
-          console.warn("Supabase not configured, using mock data:", error.message);
-          setSwimmers(mockSwimmers);
-        } else if (data) {
-          setSwimmers(data.map((s: { id: string; first_name: string; last_name: string; date_of_birth: string; gender: string }) => ({
-            id: s.id,
-            name: `${s.first_name} ${s.last_name}`,
-            age: new Date().getFullYear() - new Date(s.date_of_birth).getFullYear(),
-            gender: s.gender,
-            events: 0,
-            pbCount: 0,
-            lastTraining: "N/A",
-          })));
-        }
-      } catch (err) {
-        console.warn("Error connecting to Supabase, using mock data");
-        setSwimmers(mockSwimmers);
-      } finally {
+      const supabase = createClient();
+      const { data, error: queryError } = await supabase
+        .from("swimmers")
+        .select("id,first_name,last_name,date_of_birth,gender,club:clubs(name)")
+        .order("first_name");
+
+      if (queryError) {
+        setError(queryError.message);
         setIsLoading(false);
+        return;
       }
+
+      setSwimmers(
+        ((data ?? []) as unknown as SwimmerRow[]).map((swimmer) => ({
+          id: swimmer.id,
+          name: `${swimmer.first_name} ${swimmer.last_name}`,
+          age: swimmer.date_of_birth ? calculateAge(swimmer.date_of_birth) : null,
+          gender: swimmer.gender,
+          clubName: firstRelation(swimmer.club)?.name ?? "Independent swimmer",
+        }))
+      );
+      setIsLoading(false);
     }
-    fetchSwimmers();
+
+    void fetchSwimmers();
   }, []);
 
-  const filteredSwimmers = swimmers.filter((swimmer) => {
-    const matchesSearch = swimmer.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGender = genderFilter === "all" || swimmer.gender === genderFilter;
-    return matchesSearch && matchesGender;
-  });
+  const filteredSwimmers = useMemo(
+    () =>
+      swimmers.filter(
+        (swimmer) =>
+          (gender === "all" || swimmer.gender === gender) &&
+          `${swimmer.name} ${swimmer.clubName}`
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())
+      ),
+    [gender, searchQuery, swimmers]
+  );
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Swimmers</h1>
-          <p className="text-slate-600 mt-1">Manage your club&apos;s swimmers</p>
+          <p className="mt-1 text-slate-600">The roster for clubs you manage or belong to</p>
         </div>
         <Link href="/dashboard/swimmers/add">
           <Button className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
             Add Swimmer
           </Button>
         </Link>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div className="mb-6 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-[1fr_180px]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
-            placeholder="Search swimmers..."
+            aria-label="Search swimmers"
+            placeholder="Search by swimmer or club..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(event) => setSearchQuery(event.target.value)}
             className="pl-10"
           />
         </div>
         <Select
+          aria-label="Filter by gender"
+          value={gender}
+          onChange={(event) => setGender(event.target.value)}
           options={[
-            { value: "all", label: "All Genders" },
-            { value: "male", label: "Male" },
+            { value: "all", label: "All swimmers" },
             { value: "female", label: "Female" },
+            { value: "male", label: "Male" },
           ]}
-          value={genderFilter}
-          onChange={(e) => setGenderFilter(e.target.value)}
-          className="w-40"
         />
-        <Button variant="outline" className="flex items-center gap-2">
-          <Filter className="w-4 h-4" />
-          More Filters
-        </Button>
       </div>
 
+      {error && (
+        <Card className="mb-6 border-error/40 bg-error/5">
+          <CardContent>
+            <p role="alert" className="text-sm text-error">
+              Could not load swimmers: {error}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <div className="h-24 bg-slate-100 rounded" />
+        <p className="text-slate-500">Loading swimmers...</p>
+      ) : filteredSwimmers.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filteredSwimmers.map((swimmer) => (
+            <Card key={swimmer.id}>
+              <CardContent className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <UserRound className="h-6 w-6" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate font-semibold text-slate-900">{swimmer.name}</h2>
+                  <p className="mt-1 truncate text-sm text-slate-600">{swimmer.clubName}</p>
+                  <p className="mt-2 text-xs capitalize text-slate-500">
+                    {[swimmer.gender, swimmer.age === null ? null : `age ${swimmer.age}`]
+                      .filter(Boolean)
+                      .join(" · ") || "Profile details not provided"}
+                  </p>
+                </div>
+              </CardContent>
             </Card>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSwimmers.map((swimmer) => (
-            <SwimmerCard key={swimmer.id} swimmer={swimmer} />
-          ))}
-        </div>
-      )}
-
-      {filteredSwimmers.length === 0 && !isLoading && (
-        <Card className="text-center py-12">
-          <p className="text-slate-500">No swimmers found matching your criteria</p>
+        <Card className="py-12 text-center">
+          <Users className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+          <p className="text-slate-600">
+            {searchQuery || gender !== "all"
+              ? "No swimmers match these filters."
+              : "There are no swimmers in your roster yet."}
+          </p>
+          {!searchQuery && gender === "all" && (
+            <Link href="/dashboard/swimmers/add">
+              <Button variant="outline" className="mt-4">
+                Add your first swimmer
+              </Button>
+            </Link>
+          )}
         </Card>
       )}
     </DashboardLayout>
-  );
-}
-
-function SwimmerCard({ swimmer }: { swimmer: Swimmer }) {
-  return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-lg">
-            {swimmer.name.split(" ").map(n => n[0]).join("")}
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-900">{swimmer.name}</h3>
-            <p className="text-sm text-slate-500">Age: {swimmer.age} • {swimmer.gender === "male" ? "M" : "F"}</p>
-          </div>
-        </div>
-        <button className="text-slate-400 hover:text-slate-600">
-          <MoreVertical className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-slate-100">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2 text-slate-600">
-            <Clock className="w-4 h-4" />
-            <span>{swimmer.lastTraining}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="info">{swimmer.events} events</Badge>
-            {swimmer.pbCount > 0 && (
-              <Badge variant="success">+{swimmer.pbCount} PB</Badge>
-            )}
-          </div>
-        </div>
-      </div>
-    </Card>
   );
 }

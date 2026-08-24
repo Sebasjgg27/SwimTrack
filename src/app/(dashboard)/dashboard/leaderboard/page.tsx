@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { formatTime, cn } from "@/lib/utils";
-import { Globe, MapPin, Building2, Award, Filter, ChevronDown } from "lucide-react";
+import { Globe, MapPin, Building2, Award } from "lucide-react";
 
 const mockLeaderboard = [
   { rank: 1, name: "Juan Perez", age: 16, club: "Club Alpha", city: "Bogotá", country: "Colombia", time: 52340, event: "100m Freestyle", pool: "SCM", date: "2026-04-15" },
@@ -27,8 +26,12 @@ export default function LeaderboardPage() {
     <DashboardLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Leaderboard</h1>
-        <p className="text-slate-600 mt-1">Rankings by event, location, and age group</p>
+        <p className="text-slate-600 mt-1">Sample design for planned rankings</p>
       </div>
+
+      <Card className="mb-6 border-amber-200 bg-amber-50/60">
+        <CardContent><p className="text-sm text-slate-700"><strong>Sample data:</strong> these names and times demonstrate the planned leaderboard design. They are not live competition results.</p></CardContent>
+      </Card>
 
       <Card className="mb-6">
         <CardContent className="pt-6">
@@ -121,7 +124,7 @@ export default function LeaderboardPage() {
         </FilterChip>
       </div>
 
-      <Card>
+      <Card className="overflow-x-auto">
         <CardHeader>
           <CardTitle>100m Freestyle • SCM • Male • 16-17</CardTitle>
         </CardHeader>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Waves, User, Calendar, MapPin, ChevronRight, CheckCircle, AlertCircle } from "lucide-react";
-import { createSwimmer, getOrCreateClub, getCurrentUser } from "@/lib/auth";
+import { createClubWithAdmin, createSwimmer, getCurrentUser } from "@/lib/auth";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -71,7 +71,11 @@ export default function OnboardingPage() {
         return;
       }
 
-      const { club, error: clubError } = await getOrCreateClub(formData.club, formData.country);
+      const { club, error: clubError } = await createClubWithAdmin(
+        formData.club,
+        formData.country,
+        formData.city
+      );
 
       if (clubError) {
         setError("Failed to create/join club. Please try again.");
@@ -79,7 +83,7 @@ export default function OnboardingPage() {
         return;
       }
 
-      const { data: swimmerData, error: swimmerError } = await createSwimmer(
+      const { error: swimmerError } = await createSwimmer(
         user.id,
         formData.firstName,
         formData.lastName,

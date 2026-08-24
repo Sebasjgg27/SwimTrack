@@ -165,6 +165,9 @@ CREATE TABLE import_templates (
 );
 
 -- Row Level Security
+ALTER TABLE countries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE swimmers ENABLE ROW LEVEL SECURITY;
@@ -175,28 +178,250 @@ ALTER TABLE pace_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clubs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE import_templates ENABLE ROW LEVEL SECURITY;
 
+-- Security-definer membership helpers keep policies readable and avoid
+-- recursive user_roles policy evaluation. They expose booleans only.
+CREATE OR REPLACE FUNCTION public.is_club_member(p_club_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT auth.uid() IS NOT NULL AND EXISTS (
+    SELECT 1
+      FROM public.user_roles
+     WHERE user_id = auth.uid()
+       AND club_id = p_club_id
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_club_admin(p_club_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT auth.uid() IS NOT NULL AND EXISTS (
+    SELECT 1
+      FROM public.user_roles
+     WHERE user_id = auth.uid()
+       AND club_id = p_club_id
+       AND role = 'club_admin'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_manage_club(p_club_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT auth.uid() IS NOT NULL AND EXISTS (
+    SELECT 1
+      FROM public.user_roles
+     WHERE user_id = auth.uid()
+       AND club_id = p_club_id
+       AND role IN ('club_admin', 'coach')
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_club_member(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_club_admin(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.can_manage_club(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_club_member(UUID) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.is_club_admin(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_manage_club(UUID) TO authenticated;
+
+-- Public reference data is read-only through the API.
+CREATE POLICY "Countries are publicly readable" ON countries
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Regions are publicly readable" ON regions
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Events are publicly readable" ON events
+  FOR SELECT TO anon, authenticated USING (true);
+
 -- Profile policies
-CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can view own profile" ON profiles
+  FOR SELECT TO authenticated USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles
+  FOR UPDATE TO authenticated USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- Role policies
+CREATE POLICY "Users can view own roles" ON user_roles
+  FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "Club admins can view club roles" ON user_roles
+  FOR SELECT TO authenticated USING (public.is_club_admin(club_id));
+CREATE POLICY "Club admins can manage club roles" ON user_roles
+  FOR ALL TO authenticated USING (public.is_club_admin(club_id))
+  WITH CHECK (public.is_club_admin(club_id));
+
+-- Club policies. New clubs are created only by create_club_with_admin().
+CREATE POLICY "Public clubs are readable" ON clubs
+  FOR SELECT TO anon, authenticated USING (is_public);
+CREATE POLICY "Club members can view their clubs" ON clubs
+  FOR SELECT TO authenticated USING (public.is_club_member(id));
+CREATE POLICY "Club admins can update clubs" ON clubs
+  FOR UPDATE TO authenticated USING (public.is_club_admin(id))
+  WITH CHECK (public.is_club_admin(id));
+CREATE POLICY "Club admins can delete clubs" ON clubs
+  FOR DELETE TO authenticated USING (public.is_club_admin(id));
 
 -- Swimmer policies
-CREATE POLICY "Club members can view swimmers" ON swimmers FOR SELECT 
-  USING (club_id IN (SELECT club_id FROM user_roles WHERE user_id = auth.uid()));
-CREATE POLICY "Coaches can manage swimmers" ON swimmers FOR ALL 
-  USING (club_id IN (SELECT club_id FROM user_roles WHERE user_id = auth.uid() AND role IN ('club_admin', 'coach')));
+CREATE POLICY "Users can view own swimmer profile" ON swimmers
+  FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "Club members can view swimmers" ON swimmers
+  FOR SELECT TO authenticated USING (public.is_club_member(club_id));
+CREATE POLICY "Users can create own swimmer profile" ON swimmers
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = auth.uid()
+    AND (club_id IS NULL OR public.is_club_member(club_id))
+  );
+CREATE POLICY "Users can update own swimmer profile" ON swimmers
+  FOR UPDATE TO authenticated USING (user_id = auth.uid())
+  WITH CHECK (
+    user_id = auth.uid()
+    AND (club_id IS NULL OR public.is_club_member(club_id))
+  );
+CREATE POLICY "Users can delete own swimmer profile" ON swimmers
+  FOR DELETE TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "Coaches can manage swimmers" ON swimmers
+  FOR ALL TO authenticated USING (public.can_manage_club(club_id))
+  WITH CHECK (public.can_manage_club(club_id));
+
+-- Meet policies
+CREATE POLICY "Verified meets are publicly readable" ON meets
+  FOR SELECT TO anon, authenticated USING (results_verified);
+CREATE POLICY "Club members can view meets" ON meets
+  FOR SELECT TO authenticated USING (public.is_club_member(club_id));
+CREATE POLICY "Coaches can manage meets" ON meets
+  FOR ALL TO authenticated USING (public.can_manage_club(club_id))
+  WITH CHECK (public.can_manage_club(club_id));
 
 -- Results policies
-CREATE POLICY "View results" ON results FOR SELECT 
-  USING (swimmer_id IN (SELECT id FROM swimmers WHERE club_id IN (SELECT club_id FROM user_roles WHERE user_id = auth.uid())));
-CREATE POLICY "Coaches can manage results" ON results FOR ALL 
-  USING (swimmer_id IN (SELECT id FROM swimmers WHERE club_id IN (SELECT club_id FROM user_roles WHERE user_id = auth.uid() AND role IN ('club_admin', 'coach'))));
+CREATE POLICY "Club members can view results" ON results
+  FOR SELECT TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = results.swimmer_id
+         AND (
+           swimmers.user_id = auth.uid()
+           OR public.is_club_member(swimmers.club_id)
+         )
+    )
+  );
+CREATE POLICY "Coaches can manage results" ON results
+  FOR ALL TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = results.swimmer_id
+         AND public.can_manage_club(swimmers.club_id)
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = results.swimmer_id
+         AND public.can_manage_club(swimmers.club_id)
+    )
+  );
+
+-- Time trial and pace card policies
+CREATE POLICY "Swimmers and club members can view time trials" ON time_trials
+  FOR SELECT TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = time_trials.swimmer_id
+         AND (
+           swimmers.user_id = auth.uid()
+           OR public.is_club_member(swimmers.club_id)
+         )
+    )
+  );
+CREATE POLICY "Swimmers and coaches can manage time trials" ON time_trials
+  FOR ALL TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = time_trials.swimmer_id
+         AND (
+           swimmers.user_id = auth.uid()
+           OR public.can_manage_club(swimmers.club_id)
+         )
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = time_trials.swimmer_id
+         AND (
+           swimmers.user_id = auth.uid()
+           OR public.can_manage_club(swimmers.club_id)
+         )
+    )
+  );
+CREATE POLICY "Swimmers and club members can view pace cards" ON pace_cards
+  FOR SELECT TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = pace_cards.swimmer_id
+         AND (
+           swimmers.user_id = auth.uid()
+           OR public.is_club_member(swimmers.club_id)
+         )
+    )
+  );
+CREATE POLICY "Swimmers and coaches can manage pace cards" ON pace_cards
+  FOR ALL TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = pace_cards.swimmer_id
+         AND (
+           swimmers.user_id = auth.uid()
+           OR public.can_manage_club(swimmers.club_id)
+         )
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM swimmers
+       WHERE swimmers.id = pace_cards.swimmer_id
+         AND (
+           swimmers.user_id = auth.uid()
+           OR public.can_manage_club(swimmers.club_id)
+         )
+    )
+  );
+
+-- Import template policies
+CREATE POLICY "Club members can view import templates" ON import_templates
+  FOR SELECT TO authenticated USING (public.is_club_member(club_id));
+CREATE POLICY "Coaches can manage import templates" ON import_templates
+  FOR ALL TO authenticated USING (public.can_manage_club(club_id))
+  WITH CHECK (public.can_manage_club(club_id));
+
+-- Table privileges define which operations reach RLS in the first place.
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT ON TABLE countries, regions, events, clubs TO anon, authenticated;
+GRANT SELECT, UPDATE ON TABLE profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+  user_roles,
+  swimmers,
+  meets,
+  results,
+  time_trials,
+  pace_cards,
+  import_templates
+TO authenticated;
+GRANT UPDATE, DELETE ON TABLE clubs TO authenticated;
 
 -- Public leaderboard view
-CREATE VIEW public_leaderboard AS
+CREATE VIEW public_leaderboard WITH (security_barrier = true) AS
 SELECT 
   s.id as swimmer_id,
   s.first_name || ' ' || s.last_name as swimmer_name,
-  s.date_of_birth,
   c.name as club_name,
   c.id as club_id,
   r.official_time_ms as time_ms,
@@ -216,8 +441,11 @@ WHERE s.profile_visibility IN ('club_public', 'country', 'international')
   AND r.is_dq = false
   AND m.results_verified = true;
 
+REVOKE ALL ON TABLE public_leaderboard FROM PUBLIC;
+GRANT SELECT ON TABLE public_leaderboard TO anon, authenticated;
+
 -- Personal Best view
-CREATE VIEW personal_bests AS
+CREATE VIEW personal_bests WITH (security_invoker = true) AS
 WITH ranked_results AS (
   SELECT 
     r.swimmer_id,
@@ -233,6 +461,9 @@ WITH ranked_results AS (
 )
 SELECT * FROM ranked_results WHERE rn = 1;
 
+REVOKE ALL ON TABLE personal_bests FROM PUBLIC;
+GRANT SELECT ON TABLE personal_bests TO authenticated;
+
 -- Indexes for performance
 CREATE INDEX idx_results_swimmer ON results(swimmer_id);
 CREATE INDEX idx_results_meet ON results(meet_id);
@@ -245,12 +476,15 @@ CREATE INDEX idx_pace_cards_swimmer ON pace_cards(swimmer_id);
 
 -- Trigger to auto-update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER clubs_updated_at BEFORE UPDATE ON clubs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

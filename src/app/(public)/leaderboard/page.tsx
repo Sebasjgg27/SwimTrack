@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { formatTime } from "@/lib/utils";
-import { Waves, ChevronDown, Filter, Globe } from "lucide-react";
+import { Waves, Globe } from "lucide-react";
 
 const mockLeaderboard = [
   { rank: 1, name: "Juan Perez", age: 16, club: "Club Alpha", country: "Colombia", time: 52340, event: "100m Freestyle", pool: "SCM", date: "2026-04-15", points: 856 },
@@ -42,8 +40,12 @@ export default function PublicLeaderboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Public Leaderboard</h1>
-          <p className="text-slate-400"> Rankings across Colombia</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Leaderboard Preview</h1>
+          <p className="text-slate-400">Sample data showing the planned ranking experience</p>
+        </div>
+
+        <div className="mx-auto mb-8 max-w-2xl rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-center text-sm text-amber-100">
+          These are fictional sample swimmers and times, not live or verified results.
         </div>
 
         <div className="flex items-center justify-center gap-2 mb-8">
@@ -59,7 +61,7 @@ export default function PublicLeaderboardPage() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <select 
             value={event}
             onChange={(e) => setEvent(e.target.value)}
@@ -90,13 +92,10 @@ export default function PublicLeaderboardPage() {
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
-          <button className="flex items-center justify-center gap-2 bg-primary text-white rounded-lg px-4 py-2 hover:bg-primary-dark transition-colors">
-            <Filter className="w-4 h-4" />
-            More Filters
-          </button>
         </div>
 
-        <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+        <div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-800/50">
+          <div className="min-w-[800px]">
           <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-slate-800 border-b border-slate-700 text-sm font-medium text-slate-400">
             <div className="col-span-1">Rank</div>
             <div className="col-span-3">Swimmer</div>
@@ -136,19 +135,17 @@ export default function PublicLeaderboardPage() {
               <div className="col-span-2 text-slate-400 text-sm">{entry.date}</div>
             </div>
           ))}
+          </div>
         </div>
 
         <div className="mt-8 text-center">
-          <p className="text-slate-400 text-sm">
-            Showing top 10 of 156 swimmers • 
-            <button className="text-primary hover:underline ml-1">Load more</button>
-          </p>
+          <p className="text-slate-400 text-sm">Showing 10 sample entries</p>
         </div>
       </main>
 
       <footer className="border-t border-slate-700/50 py-8 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-400 text-sm">
-          <p>Powered by SwimTrack • Leaderboard updated daily</p>
+          <p>SwimTrack beta • Sample leaderboard preview</p>
         </div>
       </footer>
     </div>

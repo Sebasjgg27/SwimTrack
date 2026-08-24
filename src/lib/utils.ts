@@ -19,30 +19,31 @@ export function formatTime(ms: number): string {
 }
 
 export function parseTime(timeStr: string): number {
-  const parts = timeStr.split(/[:.]/);
-  let ms = 0;
-  
-  if (parts.length === 3) {
-    const minutes = parseInt(parts[0]) || 0;
-    const seconds = parseInt(parts[1]) || 0;
-    const centiseconds = parseInt(parts[2]) || 0;
-    ms = (minutes * 60000) + (seconds * 1000) + (centiseconds * 10);
-  } else if (parts.length === 2) {
-    const seconds = parseInt(parts[0]) || 0;
-    const centiseconds = parseInt(parts[1]) || 0;
-    ms = (seconds * 1000) + (centiseconds * 10);
-  } else {
-    ms = parseInt(timeStr) || 0;
+  const normalized = timeStr.trim();
+  const minuteMatch = normalized.match(/^(\d+):([0-5]\d)(?:\.(\d{1,2}))?$/);
+
+  if (minuteMatch) {
+    const [, minutes, seconds, centiseconds = "0"] = minuteMatch;
+    return (
+      Number(minutes) * 60_000 +
+      Number(seconds) * 1_000 +
+      Number(centiseconds.padEnd(2, "0")) * 10
+    );
   }
-  
-  return ms;
+
+  const secondMatch = normalized.match(/^(\d+)(?:\.(\d{1,2}))?$/);
+  if (!secondMatch) return 0;
+
+  const [, seconds, centiseconds = "0"] = secondMatch;
+  return (
+    Number(seconds) * 1_000 +
+    Number(centiseconds.padEnd(2, "0")) * 10
+  );
 }
 
 export function calculateCSS(t400ms: number, t200ms: number): number {
-  if (t400ms <= t200ms) return 0;
-  const diff = t400ms - t200ms;
-  const cssSecPer100 = (200 / (diff / 1000)) * 100 / 200;
-  return 200 / (diff / 1000);
+  if (t200ms <= 0 || t400ms <= t200ms * 2) return 0;
+  return Math.round(((t400ms - t200ms) / 2_000) * 100) / 100;
 }
 
 export interface ZonePaces {
@@ -56,21 +57,25 @@ export interface ZonePaces {
 }
 
 export function calculateZones(cssSecPer100: number): ZonePaces {
+  const pace = (offset: number) =>
+    Math.round((cssSecPer100 + offset) * 100) / 100;
+
   return {
     css: cssSecPer100,
-    a1: { min: cssSecPer100 + 20, max: cssSecPer100 + 30 },
-    a2: { min: cssSecPer100 + 10, max: cssSecPer100 + 20 },
-    a3: { min: cssSecPer100 - 5, max: cssSecPer100 + 5 },
-    vo2: { min: cssSecPer100 - 10, max: cssSecPer100 - 5 },
-    tolerance: { min: cssSecPer100 - 15, max: cssSecPer100 - 10 },
-    allOut: cssSecPer100 - 15,
+    a1: { min: pace(20), max: pace(30) },
+    a2: { min: pace(10), max: pace(20) },
+    a3: { min: pace(-5), max: pace(5) },
+    vo2: { min: pace(-10), max: pace(-5) },
+    tolerance: { min: pace(-15), max: pace(-10) },
+    allOut: pace(-15),
   };
 }
 
 export function formatPace(secPer100: number): string {
-  const minutes = Math.floor(secPer100 / 60);
-  const seconds = Math.floor(secPer100 % 60);
-  const centiseconds = Math.floor((secPer100 % 1) * 100);
+  const totalCentiseconds = Math.round(secPer100 * 100);
+  const minutes = Math.floor(totalCentiseconds / 6_000);
+  const seconds = Math.floor((totalCentiseconds % 6_000) / 100);
+  const centiseconds = totalCentiseconds % 100;
   
   if (minutes > 0) {
     return `${minutes}:${seconds.toString().padStart(2, "0")}.${centiseconds.toString().padStart(2, "0")}`;

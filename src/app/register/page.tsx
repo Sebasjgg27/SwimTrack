@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Waves, Mail, Lock, User, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react";
-import { signUp, createProfile } from "@/lib/auth";
+import { Waves, Mail, Lock, User, ArrowRight, ArrowLeft, AlertCircle, CheckCircle } from "lucide-react";
+import { signUp } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 export default function RegisterPage() {
@@ -18,6 +18,7 @@ export default function RegisterPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -58,22 +59,31 @@ export default function RegisterPage() {
       return;
     }
 
-    if (data?.user) {
-      const { error: profileError } = await createProfile(
-        data.user.id,
-        formData.firstName,
-        formData.lastName
-      );
-
-      if (profileError) {
-        setError("Account created but profile setup failed. Please complete your profile later.");
-        setTimeout(() => router.push("/onboarding"), 2000);
-        return;
-      }
+    if (data?.session) {
+      router.push("/onboarding");
+      return;
     }
 
-    router.push("/onboarding");
+    setIsAwaitingConfirmation(true);
+    setIsLoading(false);
   };
+
+  if (isAwaitingConfirmation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-800/50 p-8 text-center">
+          <CheckCircle className="mx-auto mb-5 h-14 w-14 text-success" />
+          <h1 className="text-2xl font-bold text-white">Check your email</h1>
+          <p className="mt-3 text-slate-300">
+            Your account was created. Confirm your email, then sign in to finish your swimmer profile.
+          </p>
+          <Link href="/login" className="btn-primary mt-6 inline-flex">
+            Go to sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center p-4">

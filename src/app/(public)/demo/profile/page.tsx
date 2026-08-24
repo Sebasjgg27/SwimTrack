@@ -75,7 +75,7 @@ export default function DemoProfilePage() {
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Demo Banner */}
         <div className="bg-primary/20 border border-primary/50 rounded-xl p-4 mb-8 text-center">
-          <p className="text-primary font-medium">👀 You're viewing a demo profile</p>
+          <p className="text-primary font-medium">👀 You&apos;re viewing a demo profile</p>
           <p className="text-slate-400 text-sm">Create your account to see your own data</p>
         </div>
 

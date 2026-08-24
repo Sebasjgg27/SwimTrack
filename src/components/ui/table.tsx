@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {}
+type TableProps = React.TableHTMLAttributes<HTMLTableElement>;
 
 export function Table({ className, ...props }: TableProps) {
   return (

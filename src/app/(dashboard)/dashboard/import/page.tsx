@@ -1,365 +1,71 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { AlertTriangle, FileText, Upload } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Upload, FileSpreadsheet, FileText, FileCode, CheckCircle, AlertCircle, ArrowRight, Save } from "lucide-react";
-import * as XLSX from "xlsx";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type FileFormat = "xlsx" | "csv" | "txt" | "md" | "lenex" | "sdif";
-
-interface ParsedRow {
-  [key: string]: string;
-}
-
-interface ImportState {
-  step: "upload" | "mapping" | "preview" | "complete";
-  file: File | null;
-  format: FileFormat;
+interface PreviewData {
+  fileName: string;
   headers: string[];
-  rows: ParsedRow[];
-  columnMapping: Record<string, string>;
-  errors: string[];
+  rows: string[][];
 }
-
-const formatOptions = [
-  { value: "xlsx", label: "Excel (.xlsx)", icon: FileSpreadsheet },
-  { value: "csv", label: "CSV (.csv)", icon: FileSpreadsheet },
-  { value: "txt", label: "Text (.txt)", icon: FileText },
-  { value: "md", label: "Markdown (.md)", icon: FileText },
-  { value: "lenex", label: "Lenex (.lxf, .lef)", icon: FileCode },
-  { value: "sdif", label: "SDIF (.sd3)", icon: FileCode },
-];
-
-const targetFields = [
-  { value: "swimmer_name", label: "Swimmer Name" },
-  { value: "first_name", label: "First Name" },
-  { value: "last_name", label: "Last Name" },
-  { value: "event", label: "Event (e.g., 100m Free)" },
-  { value: "time", label: "Time (e.g., 52.34)" },
-  { value: "time_ms", label: "Time in milliseconds" },
-  { value: "meet_name", label: "Meet Name" },
-  { value: "meet_date", label: "Meet Date" },
-  { value: "pool_type", label: "Pool Type (SCM/SCY/LCM)" },
-  { value: "club", label: "Club" },
-  { value: "skip", label: "Skip Column" },
-];
 
 export default function ImportPage() {
-  const [state, setState] = useState<ImportState>({
-    step: "upload",
-    file: null,
-    format: "xlsx",
-    headers: [],
-    rows: [],
-    columnMapping: {},
-    errors: [],
-  });
+  const [preview, setPreview] = useState<PreviewData | null>(null);
+  const [error, setError] = useState("");
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
+    setError("");
 
-    const format = file.name.split(".").pop()?.toLowerCase() as FileFormat;
-    
     try {
-      let headers: string[] = [];
-      let rows: ParsedRow[] = [];
-
-      if (format === "xlsx" || format === "csv") {
-        const data = await parseSpreadsheet(file);
-        headers = data.headers;
-        rows = data.rows;
-      } else if (format === "txt" || format === "md") {
-        const data = await parseTextFile(file);
-        headers = data.headers;
-        rows = data.rows;
-      } else {
-        setState(prev => ({ ...prev, errors: [`Format ${format} parsing not yet implemented`] }));
-        return;
-      }
-
-      setState(prev => ({
-        ...prev,
-        file,
-        format,
-        headers,
-        rows,
-        step: "mapping",
-        errors: [],
-      }));
-    } catch (error) {
-      setState(prev => ({ ...prev, errors: ["Failed to parse file"] }));
+      const lines = (await file.text()).split(/\r?\n/).filter((line) => line.trim());
+      if (lines.length === 0) throw new Error("The file is empty.");
+      const delimiter = file.name.toLowerCase().endsWith(".csv") ? "," : /\t/.test(lines[0]) ? "\t" : ",";
+      const parsed = lines.map((line) => line.split(delimiter).map((cell) => cell.trim()));
+      setPreview({ fileName: file.name, headers: parsed[0], rows: parsed.slice(1, 11) });
+    } catch (caught) {
+      setPreview(null);
+      setError(caught instanceof Error ? caught.message : "The file could not be read.");
     }
-  }, []);
-
-  const handleMappingChange = useCallback((header: string, target: string) => {
-    setState(prev => ({
-      ...prev,
-      columnMapping: { ...prev.columnMapping, [header]: target },
-    }));
-  }, []);
-
-  const handleSaveTemplate = useCallback(() => {
-    const templateName = prompt("Enter template name:");
-    if (!templateName) return;
-    const template = {
-      name: templateName,
-      format: state.format,
-      columnMapping: state.columnMapping,
-    };
-    const templates = JSON.parse(localStorage.getItem("import_templates") || "[]");
-    templates.push(template);
-    localStorage.setItem("import_templates", JSON.stringify(templates));
-    alert("Template saved!");
-  }, [state.format, state.columnMapping]);
-
-  const handleImport = useCallback(() => {
-    setState(prev => ({ ...prev, step: "complete" }));
-  }, []);
+  };
 
   return (
     <DashboardLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Import Times</h1>
-        <p className="text-slate-600 mt-1">Import swimmer times from various file formats</p>
-      </div>
+      <h1 className="text-3xl font-bold text-slate-900">Result Import Preview</h1>
+      <p className="mt-1 text-slate-600">Check how a CSV, TXT, or Markdown table could be read</p>
 
-      <div className="flex items-center gap-4 mb-8">
-        {["Upload", "Map Columns", "Preview", "Complete"].map((step, i) => (
-          <div key={step} className="flex items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
-              state.step === "upload" && i === 0 ? "bg-primary text-white" :
-              state.step === "mapping" && i <= 1 ? "bg-primary text-white" :
-              state.step === "preview" && i <= 2 ? "bg-primary text-white" :
-              state.step === "complete" ? "bg-success text-white" :
-              "bg-slate-200 text-slate-500"
-            }`}>
-              {i + 1}
-            </div>
-            <span className={`ml-2 text-sm ${state.step === step.toLowerCase().replace(" ", "") || 
-              (state.step === "complete" && i === 3) ? "text-slate-900" : "text-slate-500"}`}>
-              {step}
-            </span>
-            {i < 3 && <div className="w-8 h-0.5 bg-slate-200 mx-2" />}
-          </div>
-        ))}
-      </div>
+      <Card className="mt-6 border-amber-200 bg-amber-50/60">
+        <CardContent className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+          <p className="text-sm text-slate-700"><strong>Preview only:</strong> this beta reads the file in your browser for inspection. It does not upload or save results.</p>
+        </CardContent>
+      </Card>
 
-      {state.errors.length > 0 && (
-        <Card className="mb-6 border-error/50 bg-error/5">
-          <CardContent className="pt-4">
-            {state.errors.map((err, i) => (
-              <p key={i} className="text-sm text-error flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                {err}
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      <Card className="mt-6">
+        <CardHeader><CardTitle>Choose a text-based results file</CardTitle></CardHeader>
+        <CardContent>
+          <label className="flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-slate-300 p-10 text-center hover:border-primary">
+            <Upload className="mb-3 h-10 w-10 text-slate-400" />
+            <span className="font-medium text-slate-700">Choose CSV, TXT, or MD</span>
+            <span className="mt-1 text-sm text-slate-500">The first row is treated as column headings</span>
+            <input type="file" accept=".csv,.txt,.md,text/csv,text/plain" onChange={handleFile} className="sr-only" />
+          </label>
+          {error && <p role="alert" className="mt-4 text-sm text-error">{error}</p>}
+        </CardContent>
+      </Card>
 
-      {state.step === "upload" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Select File Format</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-              {formatOptions.map((opt) => (
-                <label
-                  key={opt.value}
-                  className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                    state.format === opt.value
-                      ? "border-primary bg-primary/5"
-                      : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="format"
-                    value={opt.value}
-                    checked={state.format === opt.value}
-                    onChange={(e) => setState(prev => ({ ...prev, format: e.target.value as FileFormat }))}
-                    className="sr-only"
-                  />
-                  <opt.icon className={`w-8 h-8 mb-2 ${state.format === opt.value ? "text-primary" : "text-slate-400"}`} />
-                  <span className={`text-sm text-center ${state.format === opt.value ? "text-primary font-medium" : "text-slate-600"}`}>
-                    {opt.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-primary transition-colors">
-              <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-              <p className="text-slate-600 mb-4">Drop your file here or click to browse</p>
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv,.txt,.md,.lxf,.lef,.sd3"
-                onChange={handleFileChange}
-                className="hidden"
-                id="file-input"
-              />
-              <Button onClick={() => document.getElementById("file-input")?.click()}>
-                Choose File
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {state.step === "mapping" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Map Columns</CardTitle>
-            <p className="text-sm text-slate-500 mt-1">Match your file columns to SwimTrack fields</p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 mb-6">
-              {state.headers.map((header) => (
-                <div key={header} className="flex items-center gap-4">
-                  <div className="w-48 font-medium text-slate-700 truncate">{header}</div>
-                  <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                  <Select
-                    options={targetFields}
-                    value={state.columnMapping[header] || ""}
-                    onChange={(e) => handleMappingChange(header, e.target.value)}
-                    placeholder="Select target field"
-                    className="flex-1"
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setState(prev => ({ ...prev, step: "upload" }))}>
-                Back
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex items-center gap-2" onClick={handleSaveTemplate}>
-                  <Save className="w-4 h-4" />
-                  Save Template
-                </Button>
-                <Button onClick={() => setState(prev => ({ ...prev, step: "preview" }))}>
-                  Continue
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {state.step === "preview" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Preview Import</CardTitle>
-            <p className="text-sm text-slate-500 mt-1">{state.rows.length} rows found</p>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    {Object.values(state.columnMapping).filter(f => f !== "skip").map((field) => (
-                      <th key={field} className="px-4 py-2 text-left font-medium text-slate-600">
-                        {targetFields.find(f => f.value === field)?.label || field}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.rows.slice(0, 10).map((row, i) => (
-                    <tr key={i} className="border-b border-slate-100">
-                      {Object.entries(state.columnMapping).filter(([_, f]) => f !== "skip").map(([sourceHeader, targetField]) => (
-                        <td key={targetField} className="px-4 py-2">{row[sourceHeader] || "-"}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {state.rows.length > 10 && (
-              <p className="p-4 text-sm text-slate-500">Showing first 10 of {state.rows.length} rows</p>
-            )}
-          </CardContent>
-          <CardContent className="flex justify-between pt-4">
-            <Button variant="outline" onClick={() => setState(prev => ({ ...prev, step: "mapping" }))}>
-              Back
-            </Button>
-            <Button onClick={handleImport}>Import {state.rows.length} Results</Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {state.step === "complete" && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <CheckCircle className="w-16 h-16 mx-auto mb-4 text-success" />
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Import Complete!</h2>
-            <p className="text-slate-600 mb-6">{state.rows.length} results have been imported successfully</p>
-            <Button onClick={() => setState(prev => ({ ...prev, step: "upload", rows: [], headers: [], columnMapping: {} }))}>
-              Import More
-            </Button>
+      {preview && (
+        <Card className="mt-6">
+          <CardHeader className="flex flex-row items-center justify-between gap-3"><div><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />{preview.fileName}</CardTitle><p className="mt-1 text-sm text-slate-500">Showing up to 10 rows; nothing has been saved</p></div><Button variant="outline" onClick={() => setPreview(null)}>Clear</Button></CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-max text-sm"><thead><tr className="border-b bg-slate-50">{preview.headers.map((header, index) => <th key={`${header}-${index}`} className="px-3 py-2 text-left font-medium text-slate-700">{header || `Column ${index + 1}`}</th>)}</tr></thead><tbody>{preview.rows.map((row, rowIndex) => <tr key={rowIndex} className="border-b border-slate-100">{preview.headers.map((_, columnIndex) => <td key={columnIndex} className="px-3 py-2 text-slate-600">{row[columnIndex] || "—"}</td>)}</tr>)}</tbody></table>
           </CardContent>
         </Card>
       )}
     </DashboardLayout>
   );
-}
-
-async function parseSpreadsheet(file: File): Promise<{ headers: string[]; rows: ParsedRow[] }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as unknown[][];
-        
-        if (json.length === 0) {
-          resolve({ headers: [], rows: [] });
-          return;
-        }
-
-        const headers = json[0].map((cell: unknown) => String(cell));
-        const rows = json.slice(1).map((row: unknown[]) => {
-          const obj: ParsedRow = {};
-          headers.forEach((header: string, i: number) => {
-            obj[header] = String(row[i] ?? "");
-          });
-          return obj;
-        });
-
-        resolve({ headers, rows });
-      } catch (_error) {
-        reject(_error);
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-async function parseTextFile(file: File): Promise<{ headers: string[]; rows: ParsedRow[] }> {
-  const text = await file.text();
-  const lines = text.trim().split("\n");
-  
-  if (lines.length === 0) return { headers: [], rows: [] };
-
-  const delimiter = lines[0].includes("\t") ? "\t" : ",";
-  const headers = lines[0].split(delimiter).map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    const values = line.split(delimiter);
-    const obj: ParsedRow = {};
-    headers.forEach((header, i) => {
-      obj[header] = values[i]?.trim() || "";
-    });
-    return obj;
-  });
-
-  return { headers, rows };
 }
