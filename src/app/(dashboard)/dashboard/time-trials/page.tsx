@@ -3,10 +3,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { calculateCSS, calculateZones, formatPace } from "@/lib/utils";
+import { calculateCSS, calculateZones, formatPace, parseTime } from "@/lib/utils";
 import { Clock, Calculator, Save, RefreshCw, CheckCircle } from "lucide-react";
 
 export default function TimeTrialsPage() {
@@ -20,6 +18,7 @@ export default function TimeTrialsPage() {
   const [zones, setZones] = useState<ReturnType<typeof calculateZones> | null>(null);
   const [css, setCss] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   // Load saved data on mount
   useEffect(() => {
@@ -38,39 +37,25 @@ export default function TimeTrialsPage() {
     }
   }, []);
 
-  const parseTime = (timeStr: string): number => {
-    if (!timeStr) return 0;
-    const parts = timeStr.split(/[:.]/);
-    let ms = 0;
-    
-    if (parts.length === 3) {
-      const minutes = parseInt(parts[0]) || 0;
-      const seconds = parseInt(parts[1]) || 0;
-      const centiseconds = parseInt(parts[2]) || 0;
-      ms = (minutes * 60000) + (seconds * 1000) + (centiseconds * 10);
-    } else if (parts.length === 2) {
-      const seconds = parseInt(parts[0]) || 0;
-      const centiseconds = parseInt(parts[1]) || 0;
-      ms = (seconds * 1000) + (centiseconds * 10);
-    } else {
-      ms = parseInt(timeStr) || 0;
-    }
-    
-    return ms;
-  };
-
   const handleCalculate = () => {
     const t400ms = parseTime(formData.t400);
     const t200ms = parseTime(formData.t200);
-    
-    if (t400ms > 0 && t200ms > 0 && t400ms > t200ms) {
-      const cssValue = calculateCSS(t400ms, t200ms);
-      if (cssValue > 0) {
-        setCss(cssValue);
-        setZones(calculateZones(cssValue));
-        setCalculated(true);
-      }
+
+    const cssValue = calculateCSS(t400ms, t200ms);
+    if (cssValue <= 0) {
+      setCalculated(false);
+      setCss(null);
+      setZones(null);
+      setValidationError(
+        "Enter valid times. The 400m time must be slower than twice the 200m time."
+      );
+      return;
     }
+
+    setCss(cssValue);
+    setZones(calculateZones(cssValue));
+    setCalculated(true);
+    setValidationError("");
   };
 
   const handleSave = () => {
@@ -84,12 +69,14 @@ export default function TimeTrialsPage() {
     setCalculated(false);
     setZones(null);
     setCss(null);
+    setValidationError("");
     localStorage.removeItem("swimtrack_time_trials");
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setCalculated(false);
+    setValidationError("");
   };
 
   return (
@@ -186,6 +173,12 @@ export default function TimeTrialsPage() {
                 <RefreshCw className="w-4 h-4" />
               </Button>
             </div>
+
+            {validationError && (
+              <p role="alert" className="text-sm text-error">
+                {validationError}
+              </p>
+            )}
 
             {saved && (
               <div className="flex items-center gap-2 text-success">
