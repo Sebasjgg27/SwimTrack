@@ -83,7 +83,7 @@ export default function TimeTrialsPage() {
     <DashboardLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Time Trials</h1>
-        <p className="text-slate-600 mt-1">Enter your 400m and 200m time trials to calculate your training pace zones</p>
+        <p className="text-slate-600 mt-1">Calculate training pace zones; saved inputs stay only in this browser</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -183,7 +183,7 @@ export default function TimeTrialsPage() {
             {saved && (
               <div className="flex items-center gap-2 text-success">
                 <CheckCircle className="w-4 h-4" />
-                <span className="text-sm">Time trials saved!</span>
+                <span className="text-sm">Inputs saved in this browser</span>
               </div>
             )}
           </CardContent>
@@ -199,7 +199,7 @@ export default function TimeTrialsPage() {
             {calculated && (
               <Button onClick={handleSave} variant="outline" size="sm" className="flex items-center gap-2">
                 <Save className="w-4 h-4" />
-                Save
+                Save on this device
               </Button>
             )}
           </CardHeader>

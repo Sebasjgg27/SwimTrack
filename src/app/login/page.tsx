@@ -4,7 +4,6 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Waves, Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
 import { signIn } from "@/lib/auth";
 
@@ -96,9 +95,7 @@ function LoginForm() {
             </div>
 
             <div className="flex items-center justify-end">
-              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </Link>
+              <span className="text-sm text-slate-500">Password recovery is coming after beta</span>
             </div>
 
             <Button

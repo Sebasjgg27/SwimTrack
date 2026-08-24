@@ -15,31 +15,30 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.45.4",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.468.0",
     "next": "16.3.2",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@supabase/supabase-js": "^2.45.4",
-    "@supabase/ssr": "^0.5.2",
-    "xlsx": "^0.18.5",
     "recharts": "^2.13.3",
-    "lucide-react": "^0.468.0",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0",
-    "date-fns": "^4.1.0",
-    "zod": "^3.23.8",
-    "qrcode": "^1.5.4"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
     "@types/node": "^22.9.0",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/qrcode": "^1.5.5",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.14",
     "autoprefixer": "^10.4.20",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.2",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3",
     "vitest": "^4.1.11"
   }
 }

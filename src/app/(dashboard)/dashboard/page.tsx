@@ -1,185 +1,86 @@
 "use client";
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Building2, Calculator, Plus, Trophy, Upload, Users } from "lucide-react";
+
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { Users, Calendar, Trophy, TrendingUp, Clock, Plus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase";
 
 export default function DashboardPage() {
+  const [swimmerCount, setSwimmerCount] = useState<number | null>(null);
+  const [clubCount, setClubCount] = useState<number | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadSummary() {
+      const supabase = createClient();
+      const [swimmers, clubs] = await Promise.all([
+        supabase.from("swimmers").select("id", { count: "exact", head: true }),
+        supabase.from("user_roles").select("club_id"),
+      ]);
+
+      if (swimmers.error || clubs.error) {
+        setError(swimmers.error?.message ?? clubs.error?.message ?? "Could not load dashboard data.");
+        return;
+      }
+
+      setSwimmerCount(swimmers.count ?? 0);
+      setClubCount(new Set((clubs.data ?? []).map((role) => role.club_id)).size);
+    }
+
+    void loadSummary();
+  }, []);
+
   return (
     <DashboardLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-        <p className="text-slate-600 mt-1">Welcome to SwimTrack</p>
+        <p className="mt-1 text-slate-600">Your live SwimTrack beta workspace</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          icon={<Users className="w-6 h-6" />}
-          label="Total Swimmers"
-          value="24"
-          change="+3 this month"
-        />
-        <StatCard
-          icon={<Calendar className="w-6 h-6" />}
-          label="Upcoming Meets"
-          value="2"
-          change="Next: Regional Champ"
-        />
-        <StatCard
-          icon={<Trophy className="w-6 h-6" />}
-          label="Personal Bests"
-          value="18"
-          change="+5 this season"
-        />
-        <StatCard
-          icon={<TrendingUp className="w-6 h-6" />}
-          label="Avg. Improvement"
-          value="2.3%"
-          change="vs last season"
-        />
+      {error && <p role="alert" className="mb-6 rounded-lg bg-error/5 p-3 text-sm text-error">{error}</p>}
+
+      <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <SummaryCard icon={<Users className="h-6 w-6" />} label="Visible swimmers" value={swimmerCount} />
+        <SummaryCard icon={<Building2 className="h-6 w-6" />} label="Your clubs" value={clubCount} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <QuickAction
-                icon={<Plus className="w-5 h-5" />}
-                label="Add Swimmer"
-                href="/dashboard/swimmers/new"
-              />
-              <QuickAction
-                icon={<Calendar className="w-5 h-5" />}
-                label="Create Meet"
-                href="/dashboard/meets/new"
-              />
-              <QuickAction
-                icon={<Trophy className="w-5 h-5" />}
-                label="View Leaderboard"
-                href="/dashboard/leaderboard"
-              />
-              <QuickAction
-                icon={<Users className="w-5 h-5" />}
-                label="Import Times"
-                href="/dashboard/import"
-              />
-            </div>
+          <CardHeader><CardTitle>Working now</CardTitle></CardHeader>
+          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <QuickAction icon={<Plus className="h-5 w-5" />} label="Add swimmer" href="/dashboard/swimmers/add" />
+            <QuickAction icon={<Building2 className="h-5 w-5" />} label="Create club" href="/dashboard/clubs/add" />
+            <QuickAction icon={<Calculator className="h-5 w-5" />} label="Calculate training zones" href="/dashboard/time-trials" />
+            <QuickAction icon={<Users className="h-5 w-5" />} label="View roster" href="/dashboard/swimmers" />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Results</CardTitle>
-          </CardHeader>
+        <Card className="border-amber-200 bg-amber-50/60">
+          <CardHeader><CardTitle>Preview features</CardTitle></CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <RecentResult
-                name="Juan Perez"
-                event="100m Freestyle"
-                time="52.34"
-                meet="Regional Championship"
-                isPB
-              />
-              <RecentResult
-                name="Maria Garcia"
-                event="200m Backstroke"
-                time="2:18.45"
-                meet="Club Invitational"
-              />
-              <RecentResult
-                name="Carlos Lopez"
-                event="50m Butterfly"
-                time="26.12"
-                meet="Regional Championship"
-                isPB
-              />
+            <p className="mb-4 text-sm text-slate-700">Meets, leaderboards, and result imports are visible design previews. They do not save competition data yet.</p>
+            <div className="flex flex-wrap gap-3">
+              <PreviewLink icon={<Trophy className="h-4 w-4" />} label="Leaderboard preview" href="/dashboard/leaderboard" />
+              <PreviewLink icon={<Upload className="h-4 w-4" />} label="Import preview" href="/dashboard/import" />
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-primary" />
-            Next Time Trial Deadline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">End of Season Testing</p>
-              <p className="text-sm text-slate-500">All swimmers must complete 400m & 200m time trials</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-primary">14 days</p>
-              <p className="text-sm text-slate-500">Due: May 15, 2026</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </DashboardLayout>
   );
 }
 
-function StatCard({ icon, label, value, change }: { icon: React.ReactNode; label: string; value: string; change: string }) {
-  return (
-    <Card>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-slate-500">{label}</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
-          <p className="text-sm text-slate-500 mt-1">{change}</p>
-        </div>
-        <div className="p-3 bg-primary/10 rounded-lg text-primary">
-          {icon}
-        </div>
-      </div>
-    </Card>
-  );
+function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | null }) {
+  return <Card><div className="flex items-center gap-4"><div className="rounded-lg bg-primary/10 p-3 text-primary">{icon}</div><div><p className="text-sm text-slate-500">{label}</p><p className="text-3xl font-bold text-slate-900">{value ?? "—"}</p></div></div></Card>;
 }
 
 function QuickAction({ icon, label, href }: { icon: React.ReactNode; label: string; href: string }) {
-  return (
-    <a
-      href={href}
-      className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-    >
-      <div className="text-primary mb-2">{icon}</div>
-      <span className="text-sm font-medium text-slate-700">{label}</span>
-    </a>
-  );
+  return <Link href={href} className="flex items-center gap-3 rounded-lg bg-slate-50 p-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"><span className="text-primary">{icon}</span>{label}</Link>;
 }
 
-function RecentResult({ 
-  name, 
-  event, 
-  time, 
-  meet, 
-  isPB 
-}: { 
-  name: string; 
-  event: string; 
-  time: string; 
-  meet: string; 
-  isPB?: boolean 
-}) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-      <div>
-        <p className="font-medium text-slate-900">{name}</p>
-        <p className="text-sm text-slate-500">{event}</p>
-      </div>
-      <div className="text-right">
-        <p className="font-mono font-medium text-slate-900">{time}</p>
-        <div className="flex items-center gap-2 justify-end">
-          {isPB && <span className="text-xs bg-success/10 text-success px-2 py-0.5 rounded">PB</span>}
-          <span className="text-xs text-slate-500">{meet}</span>
-        </div>
-      </div>
-    </div>
-  );
+function PreviewLink({ icon, label, href }: { icon: React.ReactNode; label: string; href: string }) {
+  return <Link href={href} className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-slate-700">{icon}{label}</Link>;
 }

@@ -57,7 +57,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed left-0 top-0 h-full w-64 bg-slate-900 text-white flex flex-col">
+      <aside className="fixed left-0 top-0 hidden h-full w-64 flex-col bg-slate-900 text-white lg:flex">
         <div className="p-4 border-b border-slate-800">
           <Link href="/" className="flex items-center gap-2">
             <Waves className="w-8 h-8 text-primary" />
@@ -113,7 +113,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </aside>
 
-      <main className="ml-64 p-8">
+      <header className="flex items-center justify-between bg-slate-900 px-4 py-3 text-white lg:hidden">
+        <Link href="/dashboard" className="flex items-center gap-2 font-bold">
+          <Waves className="h-7 w-7 text-primary" /> SwimTrack
+        </Link>
+        <button type="button" onClick={handleSignOut} disabled={isSigningOut} className="text-sm text-slate-300">
+          {isSigningOut ? "Signing out..." : "Sign out"}
+        </button>
+      </header>
+      <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-white p-2 lg:hidden">
+        {navItems.map((item) => {
+          const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.href);
+          return (
+            <Link key={item.href} href={item.href} className={cn("flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm", isActive ? "bg-primary text-white" : "text-slate-600")}>
+              <item.icon className="h-4 w-4" /> {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <main className="p-4 sm:p-6 lg:ml-64 lg:p-8">
         {children}
       </main>
     </div>

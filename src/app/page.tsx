@@ -28,8 +28,8 @@ export default function Home() {
               Swimming Club Management
             </h1>
             <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-              Track times, manage meets, calculate training zones, and compete on leaderboards. 
-              Built for coaches, swimmers, and clubs.
+              A working beta for club rosters and CSS training-zone calculations,
+              with clearly marked previews of the larger swimming platform.
             </p>
           </div>
 
@@ -37,17 +37,17 @@ export default function Home() {
             <FeatureCard
               icon={<Trophy className="w-8 h-8 text-primary" />}
               title="Leaderboards"
-              description="Geographic rankings at club, state, national, and international levels"
+              description="Explore a clearly labeled sample of the planned ranking experience"
             />
             <FeatureCard
               icon={<Users className="w-8 h-8 text-secondary" />}
               title="Swimmer Profiles"
-              description="Personal bests, progression charts, and training pace cards"
+              description="Create real club rosters now; performance profiles are planned next"
             />
             <FeatureCard
               icon={<Calendar className="w-8 h-8 text-accent" />}
               title="Meet Management"
-              description="Track competitions, results, and verify times"
+              description="Preview the planned competition workflow without fake saved data"
             />
             <FeatureCard
               icon={<Clock className="w-8 h-8 text-success" />}
@@ -60,20 +60,20 @@ export default function Home() {
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-4">
-                  Free for Swimming Clubs
+                  SwimTrack Beta
                 </h2>
                 <ul className="space-y-3 text-slate-300">
                   <li className="flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-primary" />
-                    No credit card required
+                    Create clubs and swimmer rosters
                   </li>
                   <li className="flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-primary" />
-                    500MB database included
+                    Secure account and club access
                   </li>
                   <li className="flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-primary" />
-                    Import from XLSX, CSV, Lenex, SDIF
+                    Inspect CSV, TXT, and MD files in preview mode
                   </li>
                   <li className="flex items-center gap-2">
                     <ChevronRight className="w-4 h-4 text-primary" />
@@ -95,16 +95,13 @@ export default function Home() {
 
         <section className="max-w-7xl mx-auto px-4 py-16">
           <h2 className="text-2xl font-bold text-white mb-8 text-center">
-            Supported File Formats
+            File Preview Formats
           </h2>
           <div className="flex flex-wrap justify-center gap-4">
-            <FormatBadge name="XLSX" />
             <FormatBadge name="CSV" />
             <FormatBadge name="TXT" />
             <FormatBadge name="MD" />
-            <FormatBadge name="Lenex" color="bg-green-600" />
-            <FormatBadge name="SDIF" color="bg-orange-600" />
-            <FormatBadge name="Manual Entry" color="bg-purple-600" />
+            <FormatBadge name="Preview only" color="bg-amber-600" />
           </div>
         </section>
       </main>
