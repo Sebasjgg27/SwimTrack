@@ -87,7 +87,7 @@ export default function TimeTrialsPage() {
     localStorage.removeItem("swimtrack_time_trials");
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setCalculated(false);
   };

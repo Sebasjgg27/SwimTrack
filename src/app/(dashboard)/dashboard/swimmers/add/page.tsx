@@ -238,7 +238,7 @@ export default function AddSwimmerPage() {
                 ]}
               />
               <p className="text-sm text-slate-500">
-                Controls who can see this swimmer's times and results in public leaderboards.
+                Controls who can see this swimmer&apos;s times and results in public leaderboards.
               </p>
             </CardContent>
           </Card>

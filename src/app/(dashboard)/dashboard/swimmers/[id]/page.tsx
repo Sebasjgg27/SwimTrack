@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,8 @@ const mockProgression = [
   { date: "2026-04", time: 52340 },
 ];
 
-export default function SwimmerProfilePage({ params }: { params: { id: string } }) {
+export default function SwimmerProfilePage() {
+  const params = useParams<{ id: string }>();
   const [t400, setT400] = useState("4:32.15");
   const [t200, setT200] = useState("2:08.45");
   const [zones, setZones] = useState<ReturnType<typeof calculateZones> | null>(null);

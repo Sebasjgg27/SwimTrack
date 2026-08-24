@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,8 @@ const mockSwimmer = {
   phone: "+57 300 123 4567",
 };
 
-export default function EditSwimmerPage({ params }: { params: { id: string } }) {
+export default function EditSwimmerPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<SwimmerFormData>({
@@ -220,7 +221,7 @@ export default function EditSwimmerPage({ params }: { params: { id: string } }) 
                 ]}
               />
               <p className="text-sm text-slate-500">
-                Controls who can see this swimmer's times and results in public leaderboards.
+                Controls who can see this swimmer&apos;s times and results in public leaderboards.
               </p>
             </CardContent>
           </Card>
