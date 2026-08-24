@@ -113,8 +113,8 @@ Vercel will use `npm run build`. After the first deployment, update the Supabase
 The included migration workflow runs when migrations reach `main`. Configure these GitHub Actions secrets:
 
 - `SUPABASE_ACCESS_TOKEN`
-- `PROJECT_REF`
-- `DB_PASSWORD`
+- `SUPABASE_PROJECT_REF`
+- `SUPABASE_DB_PASSWORD`
 
 Test migrations in a development Supabase project before pointing the workflow at production.
 
