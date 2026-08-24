@@ -50,3 +50,8 @@ yarn-debug.log*
 # Build
 build/
 dist/
+
+# Local deployment credentials and project metadata
+.env*
+!.env.example
+.vercel/
